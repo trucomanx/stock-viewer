@@ -1,0 +1,10 @@
+{
+    "columns": [
+        "Stock",
+        "Preço Médio",
+        "Quantidade",
+        "Montante Total",
+        "Preço Atual"
+    ]
+}
+
