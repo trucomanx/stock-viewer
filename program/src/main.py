@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 
+DEFAULT_CONFIG_PATH='base.stock-viewer.conf.json'
+
 class StocksViewer(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -49,12 +51,12 @@ class StocksViewer(QMainWindow):
         # Layout horizontal para stocks.json
         stocks_layout = QHBoxLayout()
         self.stocks_path_edit = QLineEdit(self)
-        self.stocks_path_edit.setPlaceholderText('Selecione o arquivo *.stocks.json')
-        self.stocks_path_edit.setToolTip('Caminho do arquivo stocks.json que contém os dados das ações')
+        self.stocks_path_edit.setPlaceholderText('Select *.stocks.json')
+        self.stocks_path_edit.setToolTip('Path to the stocks.json file that contains the stock data')
         stocks_layout.addWidget(self.stocks_path_edit)
 
-        self.stocks_button = QPushButton('Selecionar stocks.json', self)
-        self.stocks_button.setToolTip('Clique para selecionar o arquivo *.stocks.json')
+        self.stocks_button = QPushButton('Select *.stocks.json', self)
+        self.stocks_button.setToolTip('Click to select the *.stocks.json file')
         self.stocks_button.clicked.connect(self.select_stocks_file)
         stocks_layout.addWidget(self.stocks_button)
 
@@ -63,48 +65,48 @@ class StocksViewer(QMainWindow):
         # Layout horizontal para groups.json
         groups_layout = QHBoxLayout()
         self.groups_path_edit = QLineEdit(self)
-        self.groups_path_edit.setPlaceholderText('Selecione o arquivo *.groups.json')
-        self.groups_path_edit.setToolTip('Caminho do arquivo groups.json que contém os grupos de ações')
+        self.groups_path_edit.setPlaceholderText('Select *.groups.json')
+        self.groups_path_edit.setToolTip('Path to the groups.json file that contains the action groups')
         groups_layout.addWidget(self.groups_path_edit)
 
-        self.groups_button = QPushButton('Selecionar groups.json', self)
-        self.groups_button.setToolTip('Clique para selecionar o arquivo *.groups.json')
+        self.groups_button = QPushButton('Select *.groups.json', self)
+        self.groups_button.setToolTip('Click to select the *.groups.json file')
         self.groups_button.clicked.connect(self.select_groups_file)
         groups_layout.addWidget(self.groups_button)
 
         layout.addLayout(groups_layout)
 
         # Botão de Atualizar
-        self.update_button = QPushButton('Atualizar', self)
-        self.update_button.setToolTip('Clique para atualizar os dados dos arquivos selecionados')
+        self.update_button = QPushButton('To update', self)
+        self.update_button.setToolTip('Click to update data for selected files')
         self.update_button.clicked.connect(self.update_data)
         layout.addWidget(self.update_button)
 
         # Botão de Salvar
-        self.save_button = QPushButton('Salvar', self)
-        self.save_button.setToolTip('Clique para salvar as modificações feitas nos dados das ações')
+        self.save_button = QPushButton('Save', self)
+        self.save_button.setToolTip('Click to save changes made to stock data')
         self.save_button.clicked.connect(self.save_data)
         layout.addWidget(self.save_button)
 
         # Label
-        self.label = QLabel('Selecione um grupo de ações:')
+        self.label = QLabel('Select a group of actions:')
         layout.addWidget(self.label)
 
         # ComboBox para selecionar o grupo
         self.comboBox = QComboBox()
-        self.comboBox.setToolTip('Escolha um grupo de ações para visualizar seus detalhes')
+        self.comboBox.setToolTip('Choose a stock group to view its details')
         self.comboBox.currentTextChanged.connect(self.display_table)
         layout.addWidget(self.comboBox)
 
         # Tabela para mostrar os stocks
         self.tableWidget = QTableWidget()
-        self.tableWidget.setToolTip('Tabela que exibe as ações, preços médios, quantidades e montantes totais do grupo selecionado')
+        self.tableWidget.setToolTip('Table displaying the shares, average prices, quantities and total amounts of the selected group')
         self.tableWidget.itemChanged.connect(self.update_amount)
         layout.addWidget(self.tableWidget)
 
         # Label para mostrar o montante total do grupo
-        self.total_label = QLabel('Montante Total do Grupo: ')
-        self.total_label.setToolTip('Mostra o montante total investido no grupo de ações selecionado')
+        self.total_label = QLabel('Total Group Amount: ')
+        self.total_label.setToolTip('Shows the total amount invested in the selected stock group')
         layout.addWidget(self.total_label)
 
         self.table_tab.setLayout(layout)
@@ -114,48 +116,48 @@ class StocksViewer(QMainWindow):
 
         # Layout horizontal para config.json
         self.config_path_edit = QLineEdit(self)
-        self.config_path_edit.setPlaceholderText('Selecione o arquivo *.stock-viewer.conf.json')
-        self.config_path_edit.setToolTip('Caminho do arquivo stock-viewer.conf.json que contém a configuração das colunas')
-        layout.addRow('Arquivo de Configuração:', self.config_path_edit)
+        self.config_path_edit.setPlaceholderText('Select the *.stock-viewer.conf.json file')
+        self.config_path_edit.setToolTip('Path to the stock-viewer.conf.json file that contains the columns configuration')
+        layout.addRow('Configuration File:', self.config_path_edit)
 
-        self.config_button = QPushButton('Selecionar Configuração', self)
-        self.config_button.setToolTip('Clique para selecionar o arquivo *.stock-viewer.conf.json')
+        self.config_button = QPushButton('Select Configuration', self)
+        self.config_button.setToolTip('Click to select the *.stock-viewer.conf.json file')
         self.config_button.clicked.connect(self.select_config_file)
         layout.addRow('', self.config_button)
 
         # Botão de Atualizar Configuração
-        self.update_config_button = QPushButton('Atualizar Configuração', self)
-        self.update_config_button.setToolTip('Clique para atualizar a configuração das colunas na tabela')
+        self.update_config_button = QPushButton('Update Configuration', self)
+        self.update_config_button.setToolTip('Click to update the column configuration in the table')
         self.update_config_button.clicked.connect(self.update_table_columns)
         layout.addRow('', self.update_config_button)
 
         self.config_tab.setLayout(layout)
 
     def select_stocks_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Selecione o arquivo stocks.json', '', 'Stocks JSON Files (*.stocks.json)')
+        path, _ = QFileDialog.getOpenFileName(self, 'Select the stocks.json file', '', 'Stocks JSON Files (*.stocks.json)')
         if path:
             self.stocks_path_edit.setText(path)
 
     def select_groups_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Selecione o arquivo groups.json', '', 'Groups JSON Files (*.groups.json)')
+        path, _ = QFileDialog.getOpenFileName(self, 'Select the groups.json file', '', 'Groups JSON Files (*.groups.json)')
         if path:
             self.groups_path_edit.setText(path)
 
     def select_config_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Selecione o arquivo stock-viewer.conf.json', '', 'Config JSON Files (*.stock-viewer.conf.json)')
+        path, _ = QFileDialog.getOpenFileName(self, 'Select the stock-viewer.conf.json file', '', 'Config JSON Files (*.stock-viewer.conf.json)')
         if path:
             self.config_path_edit.setText(path)
 
     def load_default_config(self):
-        default_config_path = 'base.stock-viewer.conf.json'
+        default_config_path = DEFAULT_CONFIG_PATH
         try:
             with open(default_config_path, 'r') as file:
                 self.config_data = json.load(file)
             self.config_path_edit.setText(default_config_path)
         except FileNotFoundError:
-            print(f"Arquivo de configuração padrão {default_config_path} não encontrado.")
+            print(f"Default configuration file {default_config_path} not found.")
         except json.JSONDecodeError:
-            print(f"Erro ao ler o arquivo de configuração padrão {default_config_path}.")
+            print(f"Error reading default configuration file {default_config_path}.")
 
     def update_data(self):
         stocks_path = self.stocks_path_edit.text()
@@ -192,12 +194,12 @@ class StocksViewer(QMainWindow):
         # Atualiza os dados do dicionário `self.stocks_data` com os valores da tabela
         for row in range(self.tableWidget.rowCount()):
             stock_name = self.tableWidget.item(row, self.config_data.get('columns', []).index('Stock')).text()
-            preco_medio = float(self.tableWidget.item(row, self.config_data.get('columns', []).index('Preço Médio')).text())
-            quantidade = int(self.tableWidget.item(row, self.config_data.get('columns', []).index('Quantidade')).text())
+            average_price = float(self.tableWidget.item(row, self.config_data.get('columns', []).index('Average Price')).text())
+            quantity = int(self.tableWidget.item(row, self.config_data.get('columns', []).index('Quantity')).text())
 
             self.stocks_data[stock_name] = {
-                'preco_medio': preco_medio,
-                'quantidade': quantidade
+                'average_price': average_price,
+                'quantity': quantity
             }
 
         # Salva os dados atualizados de volta no arquivo JSON
@@ -225,18 +227,18 @@ class StocksViewer(QMainWindow):
 
         for row, stock in enumerate(group_stocks):
             stock_data = self.stocks_data.get(stock, {})
-            preco_medio = stock_data.get('preco_medio', 0)
-            quantidade = stock_data.get('quantidade', 0)
-            montante_total = preco_medio * quantidade
+            average_price = stock_data.get('average_price', 0)
+            quantity = stock_data.get('quantity', 0)
+            montante_total = average_price * quantity
 
             for col, column in enumerate(column_names):
                 if column == 'Stock':
                     item = QTableWidgetItem(stock)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                 elif column == 'Preço Médio':
-                    item = QTableWidgetItem(f'{preco_medio:.2f}')
+                    item = QTableWidgetItem(f'{average_price:.2f}')
                 elif column == 'Quantidade':
-                    item = QTableWidgetItem(f'{quantidade}')
+                    item = QTableWidgetItem(f'{quantity}')
                 elif column == 'Montante Total':
                     item = QTableWidgetItem(f'{montante_total:.2f}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
@@ -286,17 +288,17 @@ class StocksViewer(QMainWindow):
             return 0.0
 
     def update_amount(self, item):
-        if item.column() in (2, 3):  # Apenas colunas de quantidade e preço médio
+        if item.column() in (2, 3):  # Apenas colunas de quantity e preço médio
             row = item.row()
 
-            preco_medio_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Preço Médio'))
-            quantidade_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Quantidade'))
+            average_price_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Preço Médio'))
+            quantity_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Quantidade'))
 
-            if preco_medio_item and quantidade_item:
+            if average_price_item and quantity_item:
                 try:
-                    quantidade = int(quantidade_item.text())
-                    preco_medio = float(preco_medio_item.text())
-                    montante_total = quantidade * preco_medio
+                    quantity = int(quantity_item.text())
+                    average_price = float(average_price_item.text())
+                    montante_total = quantity * average_price
 
                     montante_total_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Montante Total'))
                     if montante_total_item:

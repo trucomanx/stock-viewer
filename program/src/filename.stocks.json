@@ -1,14 +1,14 @@
 {
     "AAPL": {
-        "preco_medio": 150.0,
-        "quantidade": 10
+        "average_price": 150.0,
+        "quantity": 1
     },
     "GOOGL": {
-        "preco_medio": 160.0,
-        "quantidade": 5
+        "average_price": 160.0,
+        "quantity": 5
     },
     "AMZN": {
-        "preco_medio": 3400.0,
-        "quantidade": 2
+        "average_price": 3400.0,
+        "quantity": 2
     }
 }
