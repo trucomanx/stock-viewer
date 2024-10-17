@@ -1,6 +1,7 @@
 {
+    "All":["CPFE3.SA", "GOOGL", "AMZN"],
     "Brazil": ["CPFE3.SA"],
-    "Tech Giants": ["AAPL", "GOOGL", "AMZN"],
+    "Tech Giants": ["GOOGL", "AMZN"],
     "E-Commerce": ["AMZN"]
 }
 

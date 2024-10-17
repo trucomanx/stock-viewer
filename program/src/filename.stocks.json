@@ -1,14 +1,10 @@
 {
-    "AAPL": {
-        "average_price": 150.0,
-        "quantity": 1
-    },
     "GOOGL": {
         "average_price": 160.0,
         "quantity": 5
     },
     "AMZN": {
-        "average_price": 3400.0,
+        "average_price": 180.0,
         "quantity": 2
     },
     "CPFE3.SA": {
