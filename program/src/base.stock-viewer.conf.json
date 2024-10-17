@@ -2,9 +2,10 @@
     "columns": [
         {"key":"stock", "title": "Stock"},
         {"key":"average_price", "title": "Preço Médio"},
-        {"key":"current_price", "title": "Preço Atual"},
+        {"key":"currentPrice", "title": "Preço Atual"},
         {"key":"quantity", "title": "Quantidade"},
-        {"key":"total_amount", "title": "Montante Total"}
+        {"key":"total_amount", "title": "Montante Total"},
+        {"key":"capital_gain", "title": "Ganho"}
     ]
 }
 

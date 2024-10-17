@@ -188,7 +188,7 @@ class StocksViewer(QMainWindow):
             self.groups_data = self.load_json(groups_path)
 
         self.populate_groups()
-        self.update_current_prices()
+        self.update_currentPrices()
 
     def update_table_columns(self):
         config_path = self.config_path_edit.text()
@@ -263,11 +263,12 @@ class StocksViewer(QMainWindow):
                 elif column == "total_amount":
                     item = QTableWidgetItem(f'{total_amount:.2f}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                elif column == "current_price":
+                elif column == "currentPrice":
                     item = QTableWidgetItem('')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                 else:
                     item = QTableWidgetItem('')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
 
                 # Define a cor de fundo para as células não editáveis
                 if not (item.flags() & Qt.ItemIsEditable):
@@ -279,31 +280,31 @@ class StocksViewer(QMainWindow):
             total_group_amount += total_amount
 
         self.total_label.setText(f'Montante Total do Grupo: {total_group_amount:.2f}')
-        self.update_current_prices()
+        self.update_currentPrices()
 
 
 
-    def update_current_prices(self):
+    def update_currentPrices(self):
         for row in range(self.tableWidget.rowCount()):
-            price_current_item = self.tableWidget.item(row, self.column_keys.index('current_price'))  # Coluna 'Preço Atual'
+            price_current_item = self.tableWidget.item(row, self.column_keys.index('currentPrice'))  # Coluna 'Preço Atual'
             price_mean_item    = self.tableWidget.item(row, self.column_keys.index('average_price'))  # Coluna 'Preço Médio'
             if price_current_item and price_mean_item:
                 stock_name = self.tableWidget.item(row, self.column_keys.index('stock')).text()
-                current_price = self.fetch_current_price(stock_name)
-                price_current_item.setText(f'{current_price:.2f}')
+                currentPrice = self.fetch_currentPrice(stock_name)
+                price_current_item.setText(f'{currentPrice:.2f}')
 
                 # Atualiza a cor da célula com base no preço
                 price_mean = float(price_mean_item.text())
-                if current_price > price_mean:
+                if currentPrice > price_mean:
                     price_current_item.setBackground(QColor('green'))
                 else:
                     price_current_item.setBackground(QColor('red'))
 
-    def fetch_current_price(self, stock_name):
+    def fetch_currentPrice(self, stock_name):
         try:
             stock = yf.Ticker(stock_name)
-            current_price = stock.history(period='1d')['Close'].iloc[-1]
-            return current_price
+            currentPrice = stock.history(period='1d')['Close'].iloc[-1]
+            return currentPrice
         except Exception as e:
             print(f"Erro ao obter o preço atual para {stock_name}: {e}")
             return 0.0
@@ -325,7 +326,7 @@ class StocksViewer(QMainWindow):
                     if total_amount_item:
                         total_amount_item.setText(f'{total_amount:.2f}')
 
-                    self.update_current_prices()
+                    self.update_currentPrices()
                 except ValueError:
                     pass
 
