@@ -1,10 +1,10 @@
 {
     "columns": [
-        "Stock",
-        "Preço Médio",
-        "Quantidade",
-        "Montante Total",
-        "Preço Atual"
+        {"key":"stock", "title": "Stock"},
+        {"key":"average_price", "title": "Preço Médio"},
+        {"key":"current_price", "title": "Preço Atual"},
+        {"key":"quantity", "title": "Quantidade"},
+        {"key":"total_amount", "title": "Montante Total"}
     ]
 }
 

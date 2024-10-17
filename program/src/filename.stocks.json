@@ -10,5 +10,9 @@
     "AMZN": {
         "average_price": 3400.0,
         "quantity": 2
+    },
+    "CPFE3.SA": {
+        "average_price": 30.25,
+        "quantity": 124
     }
 }

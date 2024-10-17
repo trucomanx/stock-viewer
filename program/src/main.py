@@ -11,6 +11,15 @@ from PyQt5.QtCore import Qt
 
 DEFAULT_CONFIG_PATH='base.stock-viewer.conf.json'
 
+def dicts_to_keys_titles(lista):
+    list_keys=[];
+    list_titles=[];
+    for d in lista:
+        list_keys.append(d['key'])
+        list_titles.append(d['title'])
+    return list_keys,list_titles
+        
+
 class StocksViewer(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -21,8 +30,12 @@ class StocksViewer(QMainWindow):
         self.groups_data = {}
         self.config_data = {}
 
+
         self.initUI()
-        self.load_default_config()
+        self.config_data=self.load_config_file(DEFAULT_CONFIG_PATH);
+
+        self.column_keys, self.column_titles = dicts_to_keys_titles(self.config_data["columns"])
+
 
     def initUI(self):
         widget = QWidget()
@@ -35,8 +48,8 @@ class StocksViewer(QMainWindow):
         self.table_tab = QWidget()
         self.config_tab = QWidget()
 
-        self.tab_widget.addTab(self.table_tab, 'Visualização de Dados')
-        self.tab_widget.addTab(self.config_tab, 'Configurações')
+        self.tab_widget.addTab(self.table_tab, 'Data Visualization')
+        self.tab_widget.addTab(self.config_tab, 'Settings')
 
         self.setup_table_tab()
         self.setup_config_tab()
@@ -148,16 +161,21 @@ class StocksViewer(QMainWindow):
         if path:
             self.config_path_edit.setText(path)
 
-    def load_default_config(self):
-        default_config_path = DEFAULT_CONFIG_PATH
+    def load_config_file(self,default_config_path):
         try:
             with open(default_config_path, 'r') as file:
-                self.config_data = json.load(file)
+                config_data = json.load(file)
+                if len(config_data["columns"])==0:
+                    print("Problems loading config file")
+                    exit();
             self.config_path_edit.setText(default_config_path)
         except FileNotFoundError:
             print(f"Default configuration file {default_config_path} not found.")
+            exit();
         except json.JSONDecodeError:
             print(f"Error reading default configuration file {default_config_path}.")
+            exit();
+        return config_data;
 
     def update_data(self):
         stocks_path = self.stocks_path_edit.text()
@@ -178,7 +196,9 @@ class StocksViewer(QMainWindow):
         if not config_path:
             return
 
-        self.config_data = self.load_json(config_path)
+        self.config_data=self.load_config_file(config_path);
+        self.column_keys, self.column_titles = dicts_to_keys_titles(self.config_data["columns"])
+        
         self.display_table(self.comboBox.currentText())
 
     def load_json(self, filename):
@@ -193,9 +213,10 @@ class StocksViewer(QMainWindow):
 
         # Atualiza os dados do dicionário `self.stocks_data` com os valores da tabela
         for row in range(self.tableWidget.rowCount()):
-            stock_name = self.tableWidget.item(row, self.config_data.get('columns', []).index('Stock')).text()
-            average_price = float(self.tableWidget.item(row, self.config_data.get('columns', []).index('Average Price')).text())
-            quantity = int(self.tableWidget.item(row, self.config_data.get('columns', []).index('Quantity')).text())
+            
+            stock_name    = self.tableWidget.item(row, self.column_keys.index('stock')).text()
+            average_price = float(self.tableWidget.item(row, self.column_keys.index('average_price')).text())
+            quantity      = int(self.tableWidget.item(row, self.column_keys.index('quantity')).text())
 
             self.stocks_data[stock_name] = {
                 'average_price': average_price,
@@ -219,9 +240,9 @@ class StocksViewer(QMainWindow):
         total_group_amount = 0
 
         # Configuração de colunas
-        column_names = self.config_data.get('columns', ['Stock', 'Preço Médio', 'Quantidade', 'Montante Total', 'Preço Atual'])
-        self.tableWidget.setColumnCount(len(column_names))
-        self.tableWidget.setHorizontalHeaderLabels(column_names)
+
+        self.tableWidget.setColumnCount(len(self.column_titles))
+        self.tableWidget.setHorizontalHeaderLabels(self.column_titles)
 
         self.tableWidget.setRowCount(len(group_stocks))
 
@@ -229,20 +250,20 @@ class StocksViewer(QMainWindow):
             stock_data = self.stocks_data.get(stock, {})
             average_price = stock_data.get('average_price', 0)
             quantity = stock_data.get('quantity', 0)
-            montante_total = average_price * quantity
-
-            for col, column in enumerate(column_names):
-                if column == 'Stock':
+            total_amount = average_price * quantity
+            
+            for col, column in enumerate(self.column_keys):
+                if column == "stock":
                     item = QTableWidgetItem(stock)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                elif column == 'Preço Médio':
+                elif column == "average_price":
                     item = QTableWidgetItem(f'{average_price:.2f}')
-                elif column == 'Quantidade':
+                elif column == "quantity":
                     item = QTableWidgetItem(f'{quantity}')
-                elif column == 'Montante Total':
-                    item = QTableWidgetItem(f'{montante_total:.2f}')
+                elif column == "total_amount":
+                    item = QTableWidgetItem(f'{total_amount:.2f}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                elif column == 'Preço Atual':
+                elif column == "current_price":
                     item = QTableWidgetItem('')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                 else:
@@ -255,7 +276,7 @@ class StocksViewer(QMainWindow):
                 self.tableWidget.setItem(row, col, item)
 
             # Atualizar o montante total do grupo
-            total_group_amount += montante_total
+            total_group_amount += total_amount
 
         self.total_label.setText(f'Montante Total do Grupo: {total_group_amount:.2f}')
         self.update_current_prices()
@@ -264,10 +285,10 @@ class StocksViewer(QMainWindow):
 
     def update_current_prices(self):
         for row in range(self.tableWidget.rowCount()):
-            price_current_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Preço Atual'))  # Coluna 'Preço Atual'
-            price_mean_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Preço Médio'))  # Coluna 'Preço Médio'
+            price_current_item = self.tableWidget.item(row, self.column_keys.index('current_price'))  # Coluna 'Preço Atual'
+            price_mean_item    = self.tableWidget.item(row, self.column_keys.index('average_price'))  # Coluna 'Preço Médio'
             if price_current_item and price_mean_item:
-                stock_name = self.tableWidget.item(row, self.config_data.get('columns', []).index('Stock')).text()
+                stock_name = self.tableWidget.item(row, self.column_keys.index('stock')).text()
                 current_price = self.fetch_current_price(stock_name)
                 price_current_item.setText(f'{current_price:.2f}')
 
@@ -291,18 +312,18 @@ class StocksViewer(QMainWindow):
         if item.column() in (2, 3):  # Apenas colunas de quantity e preço médio
             row = item.row()
 
-            average_price_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Preço Médio'))
-            quantity_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Quantidade'))
+            average_price_item = self.tableWidget.item(row, self.column_keys.index('average_price'))
+            quantity_item = self.tableWidget.item(row, self.column_keys.index('quantity'))
 
             if average_price_item and quantity_item:
                 try:
                     quantity = int(quantity_item.text())
                     average_price = float(average_price_item.text())
-                    montante_total = quantity * average_price
+                    total_amount = quantity * average_price
 
-                    montante_total_item = self.tableWidget.item(row, self.config_data.get('columns', []).index('Montante Total'))
-                    if montante_total_item:
-                        montante_total_item.setText(f'{montante_total:.2f}')
+                    total_amount_item = self.tableWidget.item(row, self.column_keys.index('total_amount'))
+                    if total_amount_item:
+                        total_amount_item.setText(f'{total_amount:.2f}')
 
                     self.update_current_prices()
                 except ValueError:
