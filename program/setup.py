@@ -12,7 +12,8 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'stock-viewer=stock_viewer.main:main',  # Apontando para a função principal em main.py
+            'stock-viewer-program=stock_viewer.prog_viewer:main',  # Apontando para a função principal em main.py
+            'stock-editor-program=stock_viewer.prog_editor:main',  # Apontando para a função principal em main.py
         ],
     },
     author='Fernando Pujaico Rivera',
