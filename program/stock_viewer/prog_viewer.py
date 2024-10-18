@@ -292,9 +292,19 @@ class StocksViewer(QMainWindow):
                     item = NumericTableWidgetItem(f'{value:.2f}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
+                elif column == "initial_amount":
+                    value = stock_data.get('initial_amount', float("nan")) 
+                    item = NumericTableWidgetItem(f'{value:.2f}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
                 elif column == "capital_gain":
                     value = stock_data.get('capital_gain', float("nan")) 
                     item = NumericTableWidgetItem(f'{value:.2f}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "capital_gain_ratio":
+                    value = stock_data.get('capital_gain_ratio', float("nan")) 
+                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
                 elif column == "currentPrice":
@@ -309,11 +319,26 @@ class StocksViewer(QMainWindow):
                     
                 elif column == "dividendYield":
                     value = stock_data.get('dividendYield', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                    item = NumericTableWidgetItem(f'{value*100.0:.2f}') # factor
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "fiveYearAvgDividendYield":
+                    value = stock_data.get('fiveYearAvgDividendYield', float("nan")) 
+                    item = NumericTableWidgetItem(f'{value:.2f}') # percentage no factor
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
                 elif column == "forwardPE":
                     value = stock_data.get('forwardPE', float("nan")) 
+                    item = NumericTableWidgetItem(f'{value:.2f}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "trailingEps":
+                    value = stock_data.get('trailingEps', float("nan")) 
+                    item = NumericTableWidgetItem(f'{value:.2f}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "pegRatio":
+                    value = stock_data.get('pegRatio', float("nan")) 
                     item = NumericTableWidgetItem(f'{value:.2f}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
@@ -335,6 +360,21 @@ class StocksViewer(QMainWindow):
                 elif column == "payoutRatio":
                     value = stock_data.get('payoutRatio', float("nan")) 
                     item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "profitMargins":
+                    value = stock_data.get('profitMargins', float("nan")) 
+                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "sector":
+                    value = stock_data.get('sector', '') 
+                    item = QTableWidgetItem(f'{value}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "industry":
+                    value = stock_data.get('industry', '') 
+                    item = QTableWidgetItem(f'{value}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
                 else:

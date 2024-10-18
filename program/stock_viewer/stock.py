@@ -2,7 +2,7 @@
 
 # pip install yfinance
 import yfinance as yf
-
+import json
 
 def agregate_more_stock_info(stocks_data):
     for stock_name in stocks_data:
@@ -22,14 +22,29 @@ def agregate_more_stock_info(stocks_data):
         # capital_gain
         stocks_data[stock_name]['capital_gain']=stocks_data[stock_name]['total_amount']-stocks_data[stock_name]['initial_amount'];
         
+        # capital_gain ratio
+        stocks_data[stock_name]['capital_gain_ratio']=(stocks_data[stock_name]['total_amount']-stocks_data[stock_name]['initial_amount'])/stocks_data[stock_name]['initial_amount'];
+        
         # longName
         stocks_data[stock_name]['longName']=stock.info.get('longName', 'N/A')
         
         # dividendYield
         stocks_data[stock_name]['dividendYield']=stock.info.get('dividendYield', float("nan"))
         
+        # fiveYearAvgDividendYield
+        stocks_data[stock_name]['fiveYearAvgDividendYield']=stock.info.get('fiveYearAvgDividendYield', float("nan"))
+        
+        # profitMargins
+        stocks_data[stock_name]['profitMargins']=stock.info.get('profitMargins', float("nan"))
+        
         # forwardPE
         stocks_data[stock_name]['forwardPE']=stock.info.get('forwardPE', float("nan"))
+        
+        # pegRatio
+        stocks_data[stock_name]['pegRatio']=stock.info.get('pegRatio', float("nan"))
+        
+        # trailingEps
+        stocks_data[stock_name]['trailingEps']=stock.info.get('trailingEps', float("nan"))
         
         # bookValue
         stocks_data[stock_name]['bookValue']=stock.info.get('bookValue', float("nan"))
@@ -42,8 +57,23 @@ def agregate_more_stock_info(stocks_data):
         
         # payoutRatio
         stocks_data[stock_name]['payoutRatio']=stock.info.get('payoutRatio', float("nan"))
+        
+        # industry
+        stocks_data[stock_name]['industry']=stock.info.get('industry', 'N/A')
+        
+        # sector
+        stocks_data[stock_name]['sector']=stock.info.get('sector', 'N/A')
+        
+        # currency
+        stocks_data[stock_name]["currency"]=stock.info.get("currency", 'N/A')
+        
 
         #print("Valor de Mercado:", stock.info.get('marketCap', 'N/A'))
         #print("Volume médio:", stock.info.get('averageVolume', 'N/A'))
         
     return stocks_data;
+
+
+if __name__ == "__main__":
+    stock = yf.Ticker("CPFE3.SA")
+    print(json.dumps(stock.info, indent=4))

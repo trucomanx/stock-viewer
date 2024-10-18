@@ -18,7 +18,7 @@ setup(
     },
     author='Fernando Pujaico Rivera',
     author_email='fernando.pujaico.rivera@gmail.com',
-    description='Um visualizador de ações',
+    description='A stock viewer',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/trucomanx/stock-viewer',
