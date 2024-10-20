@@ -17,15 +17,31 @@ DEFAULT_CONFIG_PATH='base.stock-viewer.conf.json'
 
 
 # Subclassificando QTableWidgetItem para suportar ordenação numérica
+
+import math
+# Subclassificando QTableWidgetItem para suportar ordenação numérica, incluindo NaN
 class NumericTableWidgetItem(QTableWidgetItem):
     def __lt__(self, other):
-        # Verifica se ambos os itens podem ser convertidos para número, se sim, compara numericamente
+        # Tenta converter os itens em números float
         try:
-            return float(self.text()) < float(other.text())
+            value1 = float(self.text())
         except ValueError:
-            # Se não puder ser convertido em número, compara como strings
-            return super().__lt__(other)
-            
+            return super().__lt__(other)  # Se não for número, compara como string
+        
+        try:
+            value2 = float(other.text())
+        except ValueError:
+            return super().__lt__(other)  # Se não for número, compara como string
+
+        # Verifica se algum valor é NaN e define a lógica de ordenação
+        if math.isnan(value1):
+            return False  # Coloca NaN no final
+        if math.isnan(value2):
+            return True  # Coloca NaN no final
+
+        # Compara numericamente se ambos os valores são válidos
+        return value1 < value2
+         
 def dicts_to_keys_titles(lista):
     list_keys=[];
     list_titles=[];

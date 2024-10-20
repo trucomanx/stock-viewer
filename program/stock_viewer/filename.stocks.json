@@ -1,14 +1,27 @@
 {
-    "GOOGL": {
-        "average_price": 160.0,
-        "quantity": 5
-    },
-    "AMZN": {
-        "average_price": 180.0,
-        "quantity": 2
-    },
-    "CPFE3.SA": {
-        "average_price": 30.25,
-        "quantity": 124
-    }
+  "CPFE3.SA": {"quantity": 124, "average_price": 30.25},
+  "BBAS3.SA": {"quantity": 87, "average_price": 28.24},
+  "MEAL3.SA": {"quantity": 785, "average_price": 2.66},
+  "CMIG4.SA": {"quantity": 156, "average_price": 11.39},
+  "RANI3.SA": {"quantity": 154, "average_price": 8.83},
+  "CVCB3.SA": {"quantity": 70, "average_price": 17.99},
+  "ALUP4.SA": {"quantity": 118, "average_price": 8.55},
+  "EQPA3.SA": {"quantity": 123, "average_price": 6.77},
+  "LEVE3.SA": {"quantity": 23, "average_price": 32.24},
+  "AGRO3.SA": {"quantity": 29, "average_price": 23.88},
+  "VALE3.SA": {"quantity": 11, "average_price": 61.31},
+  "TAEE4.SA": {"quantity": 51, "average_price": 11.85},
+  "BBDC3.SA": {"quantity": 38, "average_price": 12.31},
+  "ITSA4.SA": {"quantity": 42, "average_price": 10.18},
+  "CPLE6.SA": {"quantity": 44, "average_price": 9.59},
+  "GGBR3.SA": {"quantity": 25, "average_price": 16.76},
+  "PETR4.SA": {"quantity": 10, "average_price": 36.34},
+  "KEPL3.SA": {"quantity": 22, "average_price": 9.82},
+  "CEEB3.SA": {"quantity": 5, "average_price": 39.17},
+  "TRPL4.SA": {"quantity": 7, "average_price": 24.48},
+  "CEBR3.SA": {"quantity": 8, "average_price": 19.05},
+  "SAPR4.SA": {"quantity": 12, "average_price": 5.18},
+  "KLBN4.SA": {"quantity": 9, "average_price": 4.16},
+  "ABCB4.SA": {"quantity": 1, "average_price": 21.42}
 }
+

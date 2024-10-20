@@ -1,7 +1,29 @@
 {
-    "All":["CPFE3.SA", "GOOGL", "AMZN"],
-    "Brazil": ["CPFE3.SA"],
-    "Tech Giants": ["GOOGL", "AMZN"],
-    "E-Commerce": ["AMZN"]
+    "All":[
+    "CPFE3.SA",
+    "BBAS3.SA",
+    "MEAL3.SA",
+    "CMIG4.SA",
+    "RANI3.SA",
+    "CVCB3.SA",
+    "ALUP4.SA",
+    "EQPA3.SA",
+    "LEVE3.SA",
+    "AGRO3.SA",
+    "VALE3.SA",
+    "TAEE4.SA",
+    "BBDC3.SA",
+    "ITSA4.SA",
+    "CPLE6.SA",
+    "GGBR3.SA",
+    "PETR4.SA",
+    "KEPL3.SA",
+    "CEEB3.SA",
+    "TRPL4.SA",
+    "CEBR3.SA",
+    "SAPR4.SA",
+    "KLBN4.SA",
+    "ABCB4.SA"
+]
 }
 
