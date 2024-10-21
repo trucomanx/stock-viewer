@@ -11,9 +11,11 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 
-from stock import agregate_more_stock_info
+from stock  import agregate_more_stock_info
+from config import load_json_config_file
+from text_editor import open_with_default_text_editor
 
-DEFAULT_CONFIG_PATH='base.stock-viewer.conf.json'
+DEFAULT_CONFIG_PATH='~/.config/stock-viewer/default.stock-viewer.conf.json'
 
 
 # Subclassificando QTableWidgetItem para suportar ordenação numérica
@@ -65,7 +67,7 @@ class StocksViewer(QMainWindow):
 
 
         self.initUI()
-        self.config_data=self.load_config_file(DEFAULT_CONFIG_PATH);
+        self.config_data=self.load_config_file();
 
         self.column_keys, self.column_titles, self.column_tooltips = dicts_to_keys_titles(self.config_data["columns"])
 
@@ -165,12 +167,18 @@ class StocksViewer(QMainWindow):
         self.config_path_edit = QLineEdit(self)
         self.config_path_edit.setPlaceholderText('Select the *.stock-viewer.conf.json file')
         self.config_path_edit.setToolTip('Path to the stock-viewer.conf.json file that contains the columns configuration')
+        self.config_path_edit.setText(DEFAULT_CONFIG_PATH)
         layout.addRow('Configuration File:', self.config_path_edit)
 
         self.config_button = QPushButton('Select Configuration', self)
         self.config_button.setToolTip('Click to select the *.stock-viewer.conf.json file')
         self.config_button.clicked.connect(self.select_config_file)
         layout.addRow('', self.config_button)
+
+        self.config_edit_button = QPushButton('Edit configuration file', self)
+        self.config_edit_button.setToolTip('Click to open the *.stock-viewer.conf.json file')
+        self.config_edit_button.clicked.connect(self.edit_config_file)
+        layout.addRow('', self.config_edit_button)
 
         # Botão de Atualizar Configuração
         self.update_config_button = QPushButton('Update Configuration', self)
@@ -195,20 +203,16 @@ class StocksViewer(QMainWindow):
         if path:
             self.config_path_edit.setText(path)
 
-    def load_config_file(self,default_config_path):
-        try:
-            with open(default_config_path, 'r') as file:
-                config_data = json.load(file)
-                if len(config_data["columns"])==0:
-                    print("Problems loading config file")
-                    exit();
-            self.config_path_edit.setText(default_config_path)
-        except FileNotFoundError:
-            print(f"Default configuration file {default_config_path} not found.")
-            exit();
-        except json.JSONDecodeError:
-            print(f"Error reading default configuration file {default_config_path}.")
-            exit();
+    def edit_config_file(self):
+        path = self.config_path_edit.text()
+        if path:
+            open_with_default_text_editor(path)
+
+    def load_config_file(self):
+        config_path = self.config_path_edit.text()
+        config_data, config_path = load_json_config_file(config_path)
+        self.config_path_edit.setText(config_path)
+        
         return config_data;
 
     def update_data(self):
@@ -229,12 +233,7 @@ class StocksViewer(QMainWindow):
         self.update_color_currentPrices()
 
     def update_table_columns(self):
-        config_path = self.config_path_edit.text()
-
-        if not config_path:
-            return
-
-        self.config_data=self.load_config_file(config_path);
+        self.config_data=self.load_config_file();
         self.column_keys, self.column_titles = dicts_to_keys_titles(self.config_data["columns"])
         
         self.display_table(self.comboBox.currentText())
