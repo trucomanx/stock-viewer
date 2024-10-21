@@ -278,11 +278,34 @@ class StocksViewer(QMainWindow):
         dict_to_save=dict()
         
         for stock_name in self.stocks_data:
-            dict_to_save[stock_name] = {
-                'average_price': self.stocks_data[stock_name]["average_price"],
-                'quantity':      self.stocks_data[stock_name]["quantity"]
-            }
-        
+            #print("\nInit")
+
+            if len(self.stocks_data[stock_name].get('category',[]))<1:
+                dict_to_save[stock_name] = {
+                    'average_price': self.stocks_data[stock_name]["average_price"],
+                    'quantity':      self.stocks_data[stock_name]["quantity"]
+                }
+            else:
+                #print("\nInit")
+                #print(set(self.stocks_data[stock_name]["category"]))
+                #print(set(self.stocks_data[stock_name]["category"]).discard("*"))
+                #print(list(set(self.stocks_data[stock_name]["category"]).discard("*")))
+                
+                cats = set(self.stocks_data[stock_name].get("category",[]))
+                try:
+                    cats = cats.remove("*");
+                except:
+                    pass;
+                
+                cats = list(cats)
+                
+                dict_to_save[stock_name] = {
+                    'average_price': self.stocks_data[stock_name]["average_price"],
+                    'quantity':      self.stocks_data[stock_name]["quantity"],
+                    'category': cats
+                }
+                #print("End\n")
+            #print("End\n")
         
         # Salva os dados atualizados de volta no arquivo JSON
         with open(stocks_path, 'w') as file:
