@@ -4,7 +4,7 @@ import sys
 import json
 import yfinance as yf
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QComboBox, QTableWidget, 
+    QApplication, QMainWindow, QVBoxLayout, QLabel, QComboBox, QTableWidget, QProgressBar, 
     QTableWidgetItem, QWidget, QPushButton, QLineEdit, QFileDialog, QHBoxLayout, 
     QTabWidget, QFormLayout
 )
@@ -14,6 +14,7 @@ from PyQt5.QtCore import Qt
 from stock  import agregate_more_stock_info
 from config import load_json_config_file
 from text_editor import open_with_default_text_editor
+from categorize import categorize_stocks
 
 DEFAULT_CONFIG_PATH='~/.config/stock-viewer/default.stock-viewer.conf.json'
 
@@ -21,6 +22,42 @@ DEFAULT_CONFIG_PATH='~/.config/stock-viewer/default.stock-viewer.conf.json'
 # Subclassificando QTableWidgetItem para suportar ordenação numérica
 
 import math
+
+# Subclassificando QTableWidgetItem para suportar ordenação numérica, incluindo NaN
+class NumericTableWidgetItem(QTableWidgetItem):
+    def __init__(self, text):
+        super().__init__(text)  # Chama o construtor da classe base
+        # Tenta converter o texto em número para definir o alinhamento
+        try:
+            float_value = float(text)
+            # Se for um número, justifica à direita
+            self.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        except ValueError:
+            # Se não for um número, mantém o alinhamento padrão
+            pass
+
+    def __lt__(self, other):
+        # Tenta converter os itens em números float
+        try:
+            value1 = float(self.text())
+        except ValueError:
+            return super().__lt__(other)  # Se não for número, compara como string
+        
+        try:
+            value2 = float(other.text())
+        except ValueError:
+            return super().__lt__(other)  # Se não for número, compara como string
+
+        # Verifica se algum valor é NaN e define a lógica de ordenação
+        if math.isnan(value1):
+            return False  # Coloca NaN no final
+        if math.isnan(value2):
+            return True  # Coloca NaN no final
+
+        # Compara numericamente se ambos os valores são válidos
+        return value1 < value2
+
+'''
 # Subclassificando QTableWidgetItem para suportar ordenação numérica, incluindo NaN
 class NumericTableWidgetItem(QTableWidgetItem):
     def __lt__(self, other):
@@ -43,7 +80,8 @@ class NumericTableWidgetItem(QTableWidgetItem):
 
         # Compara numericamente se ambos os valores são válidos
         return value1 < value2
-         
+'''
+
 def dicts_to_keys_titles(lista):
     list_keys=[];
     list_titles=[];
@@ -90,6 +128,11 @@ class StocksViewer(QMainWindow):
         self.setup_config_tab()
 
         layout.addWidget(self.tab_widget)
+        
+        # progress bar
+        self.progress = QProgressBar(self)
+        layout.addWidget(self.progress)
+        
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
@@ -110,21 +153,7 @@ class StocksViewer(QMainWindow):
 
         layout.addLayout(stocks_layout)
 
-        # Layout horizontal para groups.json
-        groups_layout = QHBoxLayout()
-        self.groups_path_edit = QLineEdit(self)
-        self.groups_path_edit.setPlaceholderText('Select *.groups.json')
-        self.groups_path_edit.setToolTip('Path to the groups.json file that contains the action groups')
-        groups_layout.addWidget(self.groups_path_edit)
-
-        self.groups_button = QPushButton('Select *.groups.json', self)
-        self.groups_button.setToolTip('Click to select the *.groups.json file')
-        self.groups_button.clicked.connect(self.select_groups_file)
-        groups_layout.addWidget(self.groups_button)
-
-        layout.addLayout(groups_layout)
-
-        # Botão de Atualizar
+         # Botão de Atualizar
         self.update_button = QPushButton('To update', self)
         self.update_button.setToolTip('Click to update data for selected files')
         self.update_button.clicked.connect(self.update_data)
@@ -157,6 +186,8 @@ class StocksViewer(QMainWindow):
         self.total_label = QLabel('Total Group Amount: ')
         self.total_label.setToolTip('Shows the total amount invested in the selected stock group')
         layout.addWidget(self.total_label)
+        
+        
 
         self.table_tab.setLayout(layout)
 
@@ -193,10 +224,6 @@ class StocksViewer(QMainWindow):
         if path:
             self.stocks_path_edit.setText(path)
 
-    def select_groups_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Select the groups.json file', '', 'Groups JSON Files (*.groups.json)')
-        if path:
-            self.groups_path_edit.setText(path)
 
     def select_config_file(self):
         path, _ = QFileDialog.getOpenFileName(self, 'Select the stock-viewer.conf.json file', '', 'Config JSON Files (*.stock-viewer.conf.json)')
@@ -216,21 +243,21 @@ class StocksViewer(QMainWindow):
         return config_data;
 
     def update_data(self):
+    
+        self.setEnabled(False)
         stocks_path = self.stocks_path_edit.text()
-        groups_path = self.groups_path_edit.text()
-
+        
         if stocks_path:
             self.stocks_data = self.load_json(stocks_path)
-
-        if groups_path:
-            self.groups_data = self.load_json(groups_path)
+            self.groups_data = categorize_stocks(stocks_path)
 
 
-        self.stocks_data=agregate_more_stock_info(self.stocks_data)
-        self.populate_groups()
-        
-        self.display_table(self.comboBox.currentText())
-        self.update_color_currentPrices()
+            self.stocks_data=agregate_more_stock_info(self.stocks_data,progress=self.progress)
+            self.populate_groups()
+            
+            self.display_table(self.comboBox.currentText())
+            self.update_color_currentPrices()
+        self.setEnabled(True)
 
     def update_table_columns(self):
         self.config_data=self.load_config_file();
@@ -263,7 +290,7 @@ class StocksViewer(QMainWindow):
 
     def populate_groups(self):
         self.comboBox.clear()
-        self.comboBox.addItems(self.groups_data.keys())
+        self.comboBox.addItems(sorted(self.groups_data.keys()))
         self.display_table(self.comboBox.currentText())
 
     def display_table(self, group_name):
@@ -274,9 +301,10 @@ class StocksViewer(QMainWindow):
         total_group_amount = 0
 
         # Configuração de colunas
-
+        self.tableWidget.clear()  # Limpa os dados da tabela
         self.tableWidget.setColumnCount(len(self.column_titles))
         self.tableWidget.setHorizontalHeaderLabels(self.column_titles)
+        self.tableWidget.setSortingEnabled(False)
         
         # Adicionar os tooltips em todas as colunas
         for i in range(self.tableWidget.columnCount()):
@@ -284,12 +312,13 @@ class StocksViewer(QMainWindow):
             header_item.setToolTip(self.column_tooltips[i])
 
         self.tableWidget.setRowCount(len(group_stocks))
-
+        
         for row, stock in enumerate(group_stocks):
             stock_data = self.stocks_data.get(stock, {})
             
-            
+            value=str(stock)
             for col, column in enumerate(self.column_keys):
+                
                 if column == "stock":
                     item = QTableWidgetItem(stock)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
@@ -399,7 +428,7 @@ class StocksViewer(QMainWindow):
                 # Define a cor de fundo para as células não editáveis
                 if not (item.flags() & Qt.ItemIsEditable):
                     item.setBackground(QColor('lightgray'))
-
+                
                 self.tableWidget.setItem(row, col, item)
 
             # Atualizar o montante total do grupo
@@ -407,6 +436,7 @@ class StocksViewer(QMainWindow):
 
         self.total_label.setText(f'Montante Total do Grupo: {total_group_amount:.2f}')
         self.update_color_currentPrices()
+        self.tableWidget.setSortingEnabled(True)
 
 
 

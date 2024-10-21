@@ -4,12 +4,21 @@
 import yfinance as yf
 import json
 
-def agregate_more_stock_info(stocks_data):
+from PyQt5.QtWidgets import  QApplication
+
+
+def agregate_more_stock_info(stocks_data,progress=None):
+    if progress is not None:
+        progress.setMaximum(len(stocks_data));
+    
+    k=0;
     for stock_name in stocks_data:
         # Criar o objeto Ticker
         stock = yf.Ticker(stock_name)
         
-        
+        if progress is not None:
+            QApplication.processEvents()  # Permite que a interface responda
+            progress.setValue(k+1);
         # currentPrice
         stocks_data[stock_name]['currentPrice']=stock.info.get('currentPrice', float("nan"))
         
@@ -70,6 +79,7 @@ def agregate_more_stock_info(stocks_data):
 
         #print("Valor de Mercado:", stock.info.get('marketCap', 'N/A'))
         #print("Volume médio:", stock.info.get('averageVolume', 'N/A'))
+        k=k+1;
         
     return stocks_data;
 
