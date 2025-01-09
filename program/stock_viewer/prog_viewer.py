@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 
 from stock  import agregate_more_stock_info
 from config import load_json_config_file
@@ -173,6 +174,22 @@ class StocksViewer(QMainWindow):
         self.comboBox = QComboBox()
         self.comboBox.setToolTip('Choose a stock group to view its details')
         self.comboBox.currentTextChanged.connect(self.display_table)
+        
+        
+        self.comboBox.setStyleSheet('''
+            QComboBox {
+                color: #000000;               /* Cor do texto */
+                background-color: #DDDDFF;    /* Cor de fundo */
+                border: 2px solid #AAAAEE;    /* Borda azul-escuro */
+                /*padding: 5px;*/                 /* Espaçamento interno */
+            }
+            QComboBox QAbstractItemView {
+                background-color: #DDDDFF;    /* Fundo das opções ao abrir */
+                color: #000000;               /* Cor do texto das opções */
+                selection-background-color: #0055aa;  /* Fundo do item selecionado */
+            }
+        ''') # Estiliza o QComboBox
+        
         layout.addWidget(self.comboBox)
 
         # Tabela para mostrar os stocks
@@ -183,8 +200,16 @@ class StocksViewer(QMainWindow):
         layout.addWidget(self.tableWidget)
 
         # Label para mostrar o montante total do grupo
-        self.total_label = QLabel('Total Group Amount: ')
+        self.total_label = QLabel('Total amount and gain of group: ')
         self.total_label.setToolTip('Shows the total amount invested in the selected stock group')
+        
+        font = QFont()
+        font.setBold(True)
+        #font.setPointSize(14)
+        self.total_label.setFont(font) # aplica negrito
+        
+        self.total_label.setStyleSheet('color: black; background-color: #DDDDFF;') #border: 2px solid black; padding: 5px;
+        
         layout.addWidget(self.total_label)
         
         
@@ -322,6 +347,7 @@ class StocksViewer(QMainWindow):
 
         group_stocks = self.groups_data[group_name]
         total_group_amount = 0
+        total_group_gain = 0
 
         # Configuração de colunas
         self.tableWidget.clear()  # Limpa os dados da tabela
@@ -455,9 +481,14 @@ class StocksViewer(QMainWindow):
                 self.tableWidget.setItem(row, col, item)
 
             # Atualizar o montante total do grupo
-            total_group_amount += stock_data.get('total_amount', 0) 
+            total_group_amount += stock_data.get('total_amount', 0)
+            total_group_gain   += stock_data.get('capital_gain', 0)
 
-        self.total_label.setText(f'Montante Total do Grupo: {total_group_amount:.2f}')
+        msg = 'Total amount and gain of group: '
+        msg+= f'{total_group_amount/1000.0:.3f} K'
+        msg+= ' / '
+        msg+= f'{total_group_gain/1000.0:.3f} K'
+        self.total_label.setText(msg)
         self.update_color_currentPrices()
         self.tableWidget.setSortingEnabled(True)
 
