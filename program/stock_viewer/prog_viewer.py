@@ -551,9 +551,6 @@ class StocksViewer(QMainWindow):
         ## average_price in stock_data
         if col == id_avr:
             self.update_color_currentPrice(row)
-            self.update_color_generic("capital_gain_ratio",row)
-            self.update_color_generic("capital_gain",row)
-            
             self.stocks_data[stock_name]["average_price"]=average_price
             
         ## quantity in stock_data
@@ -561,15 +558,37 @@ class StocksViewer(QMainWindow):
             self.stocks_data[stock_name]["quantity"]=quantity
         
         ## total_amount in stock_data
-        if col == id_qtty:  # Apenas colunas de quantity e preço médio
-            #print(self.stocks_data[stock_name])
-            total_amount = quantity * self.stocks_data[stock_name]['currentPrice']
+        if (col == id_qtty) or (col == id_avr):  # Apenas colunas de quantity e preço médio
+        
+            initial_amount = quantity * average_price
+            total_amount   = quantity * self.stocks_data[stock_name]['currentPrice']
+            
             self.stocks_data[stock_name]["total_amount"]=total_amount
             
+            # total_amount
             total_amount_item = self.tableWidget.item(row, self.column_keys.index('total_amount'))
             if total_amount_item:
                 total_amount_item.setText(f'{total_amount:.2f}')
 
+            # initial_amount
+            initial_amount_item = self.tableWidget.item(row, self.column_keys.index('initial_amount'))
+            if initial_amount_item:
+                initial_amount_item.setText(f'{initial_amount:.2f}')
+                
+            # capital_gain
+            capital_gain_item = self.tableWidget.item(row, self.column_keys.index('capital_gain'))
+            if capital_gain_item:
+                value = total_amount-initial_amount
+                capital_gain_item.setText(f'{value:.2f}')
+                self.update_color_generic("capital_gain",row)
+                
+            # capital_gain_ratio
+            capital_gain_ratio_item = self.tableWidget.item(row, self.column_keys.index('capital_gain_ratio'))
+            if capital_gain_ratio_item:
+                value = (total_amount-initial_amount)*100.0/initial_amount
+                capital_gain_ratio_item.setText(f'{value:.2f}')
+                self.update_color_generic("capital_gain_ratio",row)
+                
 # -------------------------------
 # Main
 # -------------------------------
