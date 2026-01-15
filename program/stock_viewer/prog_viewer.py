@@ -2,6 +2,7 @@
 
 import sys
 import json
+import signal
 import yfinance as yf
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLabel, QComboBox, QTableWidget, QProgressBar, 
@@ -281,7 +282,7 @@ class StocksViewer(QMainWindow):
             self.populate_groups()
             
             self.display_table(self.comboBox.currentText())
-            self.update_color_currentPrices()
+            self.update_colors_in_table_items()
         self.setEnabled(True)
 
     def update_table_columns(self):
@@ -412,7 +413,7 @@ class StocksViewer(QMainWindow):
                     
                 elif column == "dividendYield":
                     value = stock_data.get('dividendYield', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*100.0:.2f}') # factor
+                    item = NumericTableWidgetItem(f'{value*1.0:.2f}') # factor
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
                 elif column == "fiveYearAvgDividendYield":
@@ -489,7 +490,7 @@ class StocksViewer(QMainWindow):
         msg+= ' / '
         msg+= f'{total_group_gain/1000.0:.3f} K'
         self.total_label.setText(msg)
-        self.update_color_currentPrices()
+        self.update_colors_in_table_items()
         self.tableWidget.setSortingEnabled(True)
 
 
@@ -504,13 +505,26 @@ class StocksViewer(QMainWindow):
             currentPrice = float(price_current_item.text())
             
             if currentPrice > price_mean:
-                price_current_item.setBackground(QColor('green'))
+                price_current_item.setBackground(QColor('#d3ffc7')) # green
             else:
-                price_current_item.setBackground(QColor('red')) 
+                price_current_item.setBackground(QColor('#ffc9d6')) # red
     
-    def update_color_currentPrices(self):
+    def update_color_generic(self,name,row):
+        item = self.tableWidget.item(row, self.column_keys.index(name)) 
+
+        if item:
+            value  = float(item.text())
+    
+            if value>0:
+                item.setBackground(QColor('#d3ffc7')) # green
+            else:
+                item.setBackground(QColor('#ffc9d6')) # red
+    
+    def update_colors_in_table_items(self):
         for row in range(self.tableWidget.rowCount()):
             self.update_color_currentPrice( row)
+            self.update_color_generic("capital_gain_ratio",row)
+            self.update_color_generic("capital_gain",row)
 
 
     def callback_item_changed(self, item):
@@ -537,9 +551,12 @@ class StocksViewer(QMainWindow):
         ## average_price in stock_data
         if col == id_avr:
             self.update_color_currentPrice(row)
+            self.update_color_generic("capital_gain_ratio",row)
+            self.update_color_generic("capital_gain",row)
+            
             self.stocks_data[stock_name]["average_price"]=average_price
             
-        ## average_price in stock_data
+        ## quantity in stock_data
         if col == id_qtty:
             self.stocks_data[stock_name]["quantity"]=quantity
         
@@ -553,11 +570,20 @@ class StocksViewer(QMainWindow):
             if total_amount_item:
                 total_amount_item.setText(f'{total_amount:.2f}')
 
-                    
-
-if __name__ == '__main__':
+# -------------------------------
+# Main
+# -------------------------------
+def main():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    
     app = QApplication(sys.argv)
+    #app.setApplicationName(about.__package__) 
+    
     viewer = StocksViewer()
     viewer.show()
     sys.exit(app.exec_())
+    
+    
+if __name__ == '__main__':
+    main()
 
