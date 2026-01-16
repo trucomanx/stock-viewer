@@ -2,7 +2,7 @@
 
 Simple stock viewer program.
 
-![logo](screenshot.png)
+![logo](https://raw.githubusercontent.com/trucomanx/StockViewer/main/screenshot.png)
 
 ## 1. Installing
 
@@ -24,7 +24,7 @@ stock-viewer
 ```
 ## 2. More information
 
-If you want more information go to [doc](https://github.com/trucomanx/StockViewer/blob/main/doc) directory
+If you want more information go to [doc](https://github.com/trucomanx/StockViewer/blob/main/doc) directory.
 
 ## 3. Buy me a coffee
 
