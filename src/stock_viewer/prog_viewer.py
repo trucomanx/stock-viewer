@@ -14,17 +14,77 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui  import QColor, QIcon, QFont, QDesktopServices
 from PyQt5.QtCore import Qt, QUrl, QSize
 
-from stock_viewer.modules.stock       import agregate_more_stock_info
-from stock_viewer.modules.config      import load_json_config_file
-from stock_viewer.modules.text_editor import open_with_default_text_editor
-from stock_viewer.modules.categorize  import categorize_stocks
-
 from pyqtgraph import PlotWidget #, plot
 import pyqtgraph as pg
 import math
 
+from stock_viewer.modules.stock       import agregate_more_stock_info
+from stock_viewer.modules.text_editor import open_with_default_text_editor
+from stock_viewer.modules.categorize  import categorize_stocks
 
-DEFAULT_CONFIG_PATH='~/.config/stock-viewer/default.stock-viewer.conf.json'
+import stock_viewer.about as about
+import stock_viewer.modules.configure as configure 
+
+DEFAULT_TABLE_CONFIG_PATH = os.path.join(   os.path.expanduser("~"),
+                                            ".config",
+                                            about.__package__,
+                                            "default."+about.__program_name__+".table.json")
+
+
+PROGRAM_CONFIG_PATH = os.path.join( os.path.expanduser("~"),
+                                    ".config",
+                                    about.__package__,
+                                    about.__program_name__+".conf.json")
+
+DEFAULT_TABLE_CONTENT={
+    "columns": [
+        {"key":"stock",              "title":"Stock",          "tooltip":"Etiqueta da ação em yahoo finance"},
+        {"key":"quantity",           "title":"Qtty",           "tooltip":"Quantidade de ações"},
+        {"key":"average_price",      "title":"P. Médio",       "tooltip":"Preço medio da ação"},
+        {"key":"currentPrice",       "title":"P. Atual",       "tooltip":"Preço atual da ação"},
+        {"key":"initial_amount",     "title":"V. Inicial",     "tooltip":"Valor incial médio do capital"},
+        {"key":"total_amount",       "title":"V. Total",       "tooltip":"Total do capital"},
+        {"key":"capital_gain",       "title":"Ganho",          "tooltip":"Ganho do capital"},
+        {"key":"capital_gain_ratio", "title":"Ganho%",         "tooltip":"Ganho do capital%"},
+        {"key":"longName",           "title":"Nome",           "tooltip":"Nome da ação"},
+        {"key":"daysData2y",         "title":"2y",             "tooltip":"Two years"},
+        {"key":"daysData6mo",        "title":"6mo",            "tooltip":"Six months"},
+        {"key":"daysData1mo",        "title":"1mo",            "tooltip":"One month"},
+        {"key":"dividendYield",      "title":"DY%",            "tooltip":"Dividend yield by year in %"},
+        {"key":"fiveYearAvgDividendYield","title":"5DY%",      "tooltip":"5 year average dividend yield by year in%"},
+        {"key":"forwardPE",          "title":"Forward P/E",    "tooltip":"Preço por ação sobre Ganho por ação prospectivo"},
+        {"key":"trailingEps",        "title":"Trailing EPS",   "tooltip":"Lucro por Ação Retrospectivo"},
+        {"key":"pegRatio",           "title":"PEG Ratio",      "tooltip":"PE ratio sobre taxa de crecimento"},
+        {"key":"bookValue",          "title":"VPA",            "tooltip":"Valor patrimonial por ação"},
+        {"key":"priceToBook",        "title":"P/VP",           "tooltip":"Preço sobre o valor patrimonial"},
+        {"key":"returnOnEquity",     "title":"ROE%",           "tooltip":"Retorno sobre o investimento%"},
+        {"key":"payoutRatio",        "title":"Payout%",        "tooltip":"Payout ratio%"},
+        {"key":"profitMargins",      "title":"ProfitMargins%", "tooltip":"Lucro liquido sobre receita total%"},
+        {"key":"sector",             "title":"Sector",         "tooltip":"Sector"}, 
+        {"key":"industry",           "title":"Industry",       "tooltip":"Industry"}
+    ]
+}
+
+DEFAULT_PROGRAM_CONTENT={ 
+    "button_prog_configure": "Configure",
+    "button_prog_configure_tooltip": "Open the configure Json file of program",  
+    "button_update": "To update",
+    "button_update_tooltip": "To update in the program the quantities and average prices from a JSON file.",
+    "button_save": "Save",
+    "button_save_tooltip": "Save the quantity and average prices in a JSON file",
+    "button_coffee": "Coffee",
+    "button_coffee_tooltip": "Buy me a coffee (TrucomanX)",
+    "button_about": "About",
+    "button_about_tooltip": "About the program",
+    "toolbutton_icon_size": 32,
+    "window_width": 1200,
+    "window_height": 800
+}
+
+configure.verify_default_config(DEFAULT_TABLE_CONFIG_PATH, default_content=DEFAULT_TABLE_CONTENT)
+configure.verify_default_config(PROGRAM_CONFIG_PATH      , default_content=DEFAULT_PROGRAM_CONTENT)
+
+CONFIG=configure.load_config(PROGRAM_CONFIG_PATH)
 
 def plot_1d_simple_widget(prices,color="red", width=1):
     w = PlotWidget()
@@ -34,8 +94,6 @@ def plot_1d_simple_widget(prices,color="red", width=1):
         prices,
         pen=pg.mkPen(color=color, width=width)
     )
-    #w.getPlotItem().getAxis('bottom').setStyle(showValues=False)
-    #w.getPlotItem().getAxis('left').setStyle(showValues=False)
     
     w.hideAxis('bottom')
     w.hideAxis('left')
@@ -149,8 +207,8 @@ def dicts_to_keys_titles(lista):
 class StocksViewer(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Stocks Viewer')
-        self.setGeometry(0, 0, 1200, 800)
+        self.setWindowTitle(about.__program_name__)
+        self.setGeometry(0, 0, CONFIG["window_width"], CONFIG["window_height"])
 
         self.stocks_data = {}
         self.groups_data = {}
@@ -218,15 +276,15 @@ class StocksViewer(QMainWindow):
         self.update_button = QPushButton('To update', self)
         self.update_button.setToolTip('Click to update data for selected files')
         self.update_button.setIcon(QIcon.fromTheme("view-refresh"))
-        self.update_button.setIconSize(QSize(32, 32))
+        self.update_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
         self.update_button.clicked.connect(self.update_data)
         buttons_layout.addWidget(self.update_button)
 
         # Botão de Salvar
-        self.save_button = QPushButton('Save', self)
-        self.save_button.setToolTip('Click to save changes made to stock data')
+        self.save_button = QPushButton(CONFIG["button_save"], self)
+        self.save_button.setToolTip(CONFIG["button_save_tooltip"])
         self.save_button.setIcon(QIcon.fromTheme("document-save"))
-        self.save_button.setIconSize(QSize(32, 32))
+        self.save_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
         self.save_button.clicked.connect(self.save_data)
         buttons_layout.addWidget(self.save_button)
 
@@ -235,19 +293,28 @@ class StocksViewer(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         buttons_layout.addWidget(spacer)
 
+
+        # Configure
+        self.configure_button = QPushButton(CONFIG["button_prog_configure"], self)
+        self.configure_button.setToolTip(CONFIG["button_prog_configure_tooltip"])
+        self.configure_button.setIcon(QIcon.fromTheme("document-properties"))
+        self.configure_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
+        self.configure_button.clicked.connect(self.on_configure_click)
+        buttons_layout.addWidget(self.configure_button)
+
         # Coffee
-        self.coffee_button = QPushButton('Coffee', self)
-        self.coffee_button.setToolTip('Buy me a coffee')
+        self.coffee_button = QPushButton(CONFIG["button_coffee"], self)
+        self.coffee_button.setToolTip(CONFIG["button_coffee_tooltip"])
         self.coffee_button.setIcon(QIcon.fromTheme("emblem-favorite"))
-        self.coffee_button.setIconSize(QSize(32, 32))
+        self.coffee_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
         self.coffee_button.clicked.connect(self.on_coffee_click)
         buttons_layout.addWidget(self.coffee_button)
         
         # About
-        self.about_button = QPushButton('About', self)
-        self.about_button.setToolTip('Click open about information')
+        self.about_button = QPushButton(CONFIG["button_about"], self)
+        self.about_button.setToolTip(CONFIG["button_about_tooltip"])
         self.about_button.setIcon(QIcon.fromTheme("help-about"))
-        self.about_button.setIconSize(QSize(32, 32))
+        self.about_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
         self.about_button.clicked.connect(self.about_data)
         buttons_layout.addWidget(self.about_button)
 
@@ -326,18 +393,18 @@ class StocksViewer(QMainWindow):
 
         # Layout horizontal para config.json
         self.config_path_edit = QLineEdit(self)
-        self.config_path_edit.setPlaceholderText('Select the *.stock-viewer.conf.json file')
-        self.config_path_edit.setToolTip('Path to the stock-viewer.conf.json file that contains the columns configuration')
-        self.config_path_edit.setText(DEFAULT_CONFIG_PATH)
+        self.config_path_edit.setPlaceholderText('Select the *.stock-viewer.table.json file')
+        self.config_path_edit.setToolTip('Path to the stock-viewer.table.json file that contains the columns configuration')
+        self.config_path_edit.setText(DEFAULT_TABLE_CONFIG_PATH)
         layout.addRow('Configuration File:', self.config_path_edit)
 
         self.config_button = QPushButton('Select Configuration', self)
-        self.config_button.setToolTip('Click to select the *.stock-viewer.conf.json file')
+        self.config_button.setToolTip('Click to select the *.stock-viewer.table.json file')
         self.config_button.clicked.connect(self.select_config_file)
         layout.addRow('', self.config_button)
 
         self.config_edit_button = QPushButton('Edit configuration file', self)
-        self.config_edit_button.setToolTip('Click to open the *.stock-viewer.conf.json file')
+        self.config_edit_button.setToolTip('Click to open the *.stock-viewer.table.json file')
         self.config_edit_button.clicked.connect(self.edit_config_file)
         layout.addRow('', self.config_edit_button)
 
@@ -354,7 +421,10 @@ class StocksViewer(QMainWindow):
         
     def on_coffee_click(self):
         QDesktopServices.openUrl(QUrl("https://ko-fi.com/trucomanx"))
-
+    
+    def on_configure_click(self):
+        open_with_default_text_editor(PROGRAM_CONFIG_PATH)
+        
     def select_stocks_file(self):
         path, _ = QFileDialog.getOpenFileName(self, 'Select the stocks.json file', '', 'Stocks JSON Files (*.stocks.json)')
         if path:
@@ -363,9 +433,10 @@ class StocksViewer(QMainWindow):
 
 
     def select_config_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Select the stock-viewer.conf.json file', '', 'Config JSON Files (*.stock-viewer.conf.json)')
+        path, _ = QFileDialog.getOpenFileName(self, 'Select the stock-viewer.table.json file', '', 'Config JSON Files (*.stock-viewer.table.json)')
         if path:
             self.config_path_edit.setText(path)
+            self.config_data=self.load_config_file();
 
     def edit_config_file(self):
         path = self.config_path_edit.text()
@@ -374,8 +445,7 @@ class StocksViewer(QMainWindow):
 
     def load_config_file(self):
         config_path = self.config_path_edit.text()
-        config_data, config_path = load_json_config_file(config_path)
-        self.config_path_edit.setText(config_path)
+        config_data = configure.load_config(config_path)
         
         return config_data;
 

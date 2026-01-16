@@ -46,7 +46,8 @@ license-files = ["LICENSE"]
 keywords = ["writing", "translate"]
 dependencies = [
     "PyQt5",
-    "yfinance"
+    "yfinance",
+    "pyqtgraph"
 ]
 
 [project.urls]
