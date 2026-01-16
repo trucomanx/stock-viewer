@@ -763,7 +763,7 @@ class StocksViewer(QMainWindow):
             total_group_amount += stock_data.get('total_amount', 0)
             total_group_gain   += stock_data.get('capital_gain', 0)
 
-        msg = CONFIG["total_amount_tooltip"]
+        msg = CONFIG["total_amount"]
         msg+= f'{total_group_amount/1000.0:.3f} K'
         msg+= ' / '
         msg+= f'{total_group_gain/1000.0:.3f} K'
