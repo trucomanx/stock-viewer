@@ -6,6 +6,20 @@ import json
 
 from PyQt5.QtWidgets import  QApplication
 
+def price_hist(stock,period="6mo"):
+    try:
+        hist = stock.history(period=period, interval="1d")
+
+        # usa preço de fechamento ajustado se existir
+        if "Adj Close" in hist:
+            prices = hist["Adj Close"].dropna().tolist()
+        else:
+            prices = hist["Close"].dropna().tolist()
+
+    except Exception as e:
+        # fallback seguro
+        prices = []
+    return prices
 
 def agregate_more_stock_info(stocks_data,progress=None):
     if progress is not None:
@@ -75,10 +89,19 @@ def agregate_more_stock_info(stocks_data,progress=None):
         
         # currency
         stocks_data[stock_name]["currency"]=stock.info.get("currency", 'N/A')
+
+        # daysData6mo:
+        stocks_data[stock_name]["daysData2y"] = price_hist(stock,period="2y")
+
+        # daysData6mo:
+        stocks_data[stock_name]["daysData6mo"] = price_hist(stock,period="6mo")
         
+        # daysData1mo:
+        stocks_data[stock_name]["daysData1mo"] = price_hist(stock,period="1mo")
 
         #print("Valor de Mercado:", stock.info.get('marketCap', 'N/A'))
         #print("Volume médio:", stock.info.get('averageVolume', 'N/A'))
+        
         k=k+1;
         
     return stocks_data;

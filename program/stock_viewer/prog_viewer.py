@@ -1,29 +1,105 @@
 #!/usr/bin/python3
 
+import os
 import sys
 import json
 import signal
-import yfinance as yf
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLabel, QComboBox, QTableWidget, QProgressBar, 
     QTableWidgetItem, QWidget, QPushButton, QLineEdit, QFileDialog, QHBoxLayout, 
-    QTabWidget, QFormLayout
+    QTabWidget, QFormLayout, QSplitter, QMenu, QSizePolicy
 )
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+
+from PyQt5.QtGui  import QColor, QIcon, QFont, QDesktopServices
+from PyQt5.QtCore import Qt, QUrl
 
 from stock  import agregate_more_stock_info
 from config import load_json_config_file
 from text_editor import open_with_default_text_editor
-from categorize import categorize_stocks
+from categorize  import categorize_stocks
+
+from pyqtgraph import PlotWidget #, plot
+import pyqtgraph as pg
+import math
+
 
 DEFAULT_CONFIG_PATH='~/.config/stock-viewer/default.stock-viewer.conf.json'
 
+def plot_1d_simple_widget(prices,color="red", width=1):
+    w = PlotWidget()
+    time=list(range(len(prices)));
+    w.plot(
+        time, 
+        prices,
+        pen=pg.mkPen(color=color, width=width)
+    )
+    #w.getPlotItem().getAxis('bottom').setStyle(showValues=False)
+    #w.getPlotItem().getAxis('left').setStyle(showValues=False)
+    
+    w.hideAxis('bottom')
+    w.hideAxis('left')
+    
+    return w
 
-# Subclassificando QTableWidgetItem para suportar ordenação numérica
+def plot_1d_complex(prices, average_price, color="red", width=2):
+    w = PlotWidget()
+    w.setBackground('w')
 
-import math
+    if not prices:
+        return w
+
+    n = len(prices)
+    
+    if n==0:
+        return w
+
+    # eixo X: dias negativos até hoje (0)
+    x = list(range(-n + 1, 1))
+    y = prices
+
+    # curva de preços
+    w.plot(
+        x,
+        y,
+        pen=pg.mkPen(color=color, width=width),
+        antialias=True
+    )
+
+    # linha horizontal do preço médio
+    avg_line = pg.InfiniteLine(
+        pos=average_price,
+        angle=0,
+        pen=pg.mkPen('gray', width=2, style=Qt.DashLine)
+    )
+    w.addItem(avg_line)
+
+    # labels e grid
+    w.setLabel('left', 'Price')
+    w.setLabel('bottom', 'Working days')
+
+    w.showGrid(x=True, y=True, alpha=0.3)
+
+    # margem para não colar no topo
+    w.getViewBox().setDefaultPadding(0.05)
+
+    # interação
+    #w.setMouseEnabled(x=False, y=False)  # tabela-friendly
+    #w.setMenuEnabled(False)
+
+    return w
+
+
+def day_data_color_and_percent(prices):
+    if len(prices)==0:
+        return "white", 0.0
+
+    percent = (prices[-1] - prices[0])*100.0/prices[0]
+
+    if prices[0]<prices[-1]:
+        return "green", percent
+
+    return "red", percent
 
 # Subclassificando QTableWidgetItem para suportar ordenação numérica, incluindo NaN
 class NumericTableWidgetItem(QTableWidgetItem):
@@ -59,31 +135,6 @@ class NumericTableWidgetItem(QTableWidgetItem):
         # Compara numericamente se ambos os valores são válidos
         return value1 < value2
 
-'''
-# Subclassificando QTableWidgetItem para suportar ordenação numérica, incluindo NaN
-class NumericTableWidgetItem(QTableWidgetItem):
-    def __lt__(self, other):
-        # Tenta converter os itens em números float
-        try:
-            value1 = float(self.text())
-        except ValueError:
-            return super().__lt__(other)  # Se não for número, compara como string
-        
-        try:
-            value2 = float(other.text())
-        except ValueError:
-            return super().__lt__(other)  # Se não for número, compara como string
-
-        # Verifica se algum valor é NaN e define a lógica de ordenação
-        if math.isnan(value1):
-            return False  # Coloca NaN no final
-        if math.isnan(value2):
-            return True  # Coloca NaN no final
-
-        # Compara numericamente se ambos os valores são válidos
-        return value1 < value2
-'''
-
 def dicts_to_keys_titles(lista):
     list_keys=[];
     list_titles=[];
@@ -99,12 +150,17 @@ class StocksViewer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Stocks Viewer')
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(0, 0, 1200, 800)
 
         self.stocks_data = {}
         self.groups_data = {}
         self.config_data = {}
 
+        ## Icon
+        # Get base directory for icons
+        base_dir_path = os.path.dirname(os.path.abspath(__file__))
+        self.icon_path = os.path.join(base_dir_path, 'icons', 'logo.png')
+        self.setWindowIcon(QIcon(self.icon_path)) 
 
         self.initUI()
         self.config_data=self.load_config_file();
@@ -155,17 +211,43 @@ class StocksViewer(QMainWindow):
 
         layout.addLayout(stocks_layout)
 
-         # Botão de Atualizar
+        #
+        buttons_layout = QHBoxLayout()
+        
+        # Botão de Atualizar
         self.update_button = QPushButton('To update', self)
         self.update_button.setToolTip('Click to update data for selected files')
+        self.update_button.setIcon(QIcon.fromTheme("view-refresh"))
         self.update_button.clicked.connect(self.update_data)
-        layout.addWidget(self.update_button)
+        buttons_layout.addWidget(self.update_button)
 
         # Botão de Salvar
         self.save_button = QPushButton('Save', self)
         self.save_button.setToolTip('Click to save changes made to stock data')
+        self.save_button.setIcon(QIcon.fromTheme("document-save"))
         self.save_button.clicked.connect(self.save_data)
-        layout.addWidget(self.save_button)
+        buttons_layout.addWidget(self.save_button)
+
+        # Adicionar o espaçador
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        buttons_layout.addWidget(spacer)
+
+        # Coffee
+        self.coffee_button = QPushButton('Coffee', self)
+        self.coffee_button.setToolTip('Buy me a coffee')
+        self.coffee_button.setIcon(QIcon.fromTheme("emblem-favorite"))
+        self.coffee_button.clicked.connect(self.on_coffee_click)
+        buttons_layout.addWidget(self.coffee_button)
+        
+        # About
+        self.about_button = QPushButton('About', self)
+        self.about_button.setToolTip('Click open about information')
+        self.about_button.setIcon(QIcon.fromTheme("help-about"))
+        self.about_button.clicked.connect(self.about_data)
+        buttons_layout.addWidget(self.about_button)
+
+        layout.addLayout(buttons_layout)
 
         # Label
         self.label = QLabel('Select a group of actions:')
@@ -175,8 +257,6 @@ class StocksViewer(QMainWindow):
         self.comboBox = QComboBox()
         self.comboBox.setToolTip('Choose a stock group to view its details')
         self.comboBox.currentTextChanged.connect(self.display_table)
-        
-        
         self.comboBox.setStyleSheet('''
             QComboBox {
                 color: #000000;               /* Cor do texto */
@@ -193,17 +273,39 @@ class StocksViewer(QMainWindow):
         
         layout.addWidget(self.comboBox)
 
+
+        # splitter vertical
+        self.splitter = QSplitter(Qt.Vertical)
+
         # Tabela para mostrar os stocks
         self.tableWidget = QTableWidget()
         self.tableWidget.setToolTip('Table displaying the shares, average prices, quantities and total amounts of the selected group')
         self.tableWidget.setSortingEnabled(True)# Habilitar a ordenação ao clicar nos títulos das colunas
         self.tableWidget.itemChanged.connect(self.callback_item_changed)
-        layout.addWidget(self.tableWidget)
+        self.tableWidget.currentCellChanged.connect(self.on_current_cell_changed)
+        self.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableWidget.customContextMenuRequested.connect(self.on_table_context_menu)
+        
+        # tabela
+        self.splitter.addWidget(self.tableWidget)
+
+        # widget inferior (placeholder do gráfico)
+        self.plot_container = QWidget()
+        self.plot_layout = QVBoxLayout()
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
+        self.plot_container.setLayout(self.plot_layout)
+
+        self.splitter.addWidget(self.plot_container)
+
+        # tamanhos iniciais (70% tabela / 30% gráfico)
+        self.splitter.setStretchFactor(0, 3)
+        self.splitter.setStretchFactor(1, 2)
+
+        layout.addWidget(self.splitter)
 
         # Label para mostrar o montante total do grupo
         self.total_label = QLabel('Total amount and gain of group: ')
         self.total_label.setToolTip('Shows the total amount invested in the selected stock group')
-        
         font = QFont()
         font.setBold(True)
         #font.setPointSize(14)
@@ -213,8 +315,6 @@ class StocksViewer(QMainWindow):
         
         layout.addWidget(self.total_label)
         
-        
-
         self.table_tab.setLayout(layout)
 
     def setup_config_tab(self):
@@ -245,10 +345,17 @@ class StocksViewer(QMainWindow):
 
         self.config_tab.setLayout(layout)
 
+    def about_data(self):
+        print("About")
+        
+    def on_coffee_click(self):
+        QDesktopServices.openUrl(QUrl("https://ko-fi.com/trucomanx"))
+
     def select_stocks_file(self):
         path, _ = QFileDialog.getOpenFileName(self, 'Select the stocks.json file', '', 'Stocks JSON Files (*.stocks.json)')
         if path:
             self.stocks_path_edit.setText(path)
+            self.update_data()
 
 
     def select_config_file(self):
@@ -410,6 +517,33 @@ class StocksViewer(QMainWindow):
                     value = stock_data.get('longName', '') 
                     item = QTableWidgetItem(f'{value}')
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+
+                elif column == "daysData2y":
+                    prices = stock_data.get('daysData2y',[])
+                    color, percent = day_data_color_and_percent(prices)
+                    plot = plot_1d_simple_widget(prices, color=color)
+                    self.tableWidget.setCellWidget(row, col, plot)
+                    # ainda precisa de um item "vazio" para sorting funcionar
+                    item = QTableWidgetItem(f'{percent}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "daysData6mo":
+                    prices = stock_data.get('daysData6mo',[])
+                    color, percent = day_data_color_and_percent(prices)
+                    plot = plot_1d_simple_widget(prices, color=color)
+                    self.tableWidget.setCellWidget(row, col, plot)
+                    # ainda precisa de um item "vazio" para sorting funcionar
+                    item = QTableWidgetItem(f'{percent}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    
+                elif column == "daysData1mo":
+                    prices = stock_data.get('daysData1mo',[])
+                    color, percent = day_data_color_and_percent(prices)
+                    plot = plot_1d_simple_widget(prices, color=color)
+                    self.tableWidget.setCellWidget(row, col, plot)
+                    # ainda precisa de um item "vazio" para sorting funcionar
+                    item = QTableWidgetItem(f'{percent}')
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
                     
                 elif column == "dividendYield":
                     value = stock_data.get('dividendYield', float("nan")) 
@@ -525,6 +659,100 @@ class StocksViewer(QMainWindow):
             self.update_color_currentPrice( row)
             self.update_color_generic("capital_gain_ratio",row)
             self.update_color_generic("capital_gain",row)
+
+    def on_current_cell_changed(self, row, column, previous_row, previous_column):
+        if row < 0:
+            return
+
+        id_stock = self.column_keys.index('stock')
+        stock_item = self.tableWidget.item(row, id_stock)
+
+        if not stock_item:
+            return
+
+        stock_name = stock_item.text()
+
+        # mostra gráfico 2y no painel inferior
+        self.show_stock_plot_2y(stock_name)
+
+
+    def show_stock_plot_2y(self, stock_name):
+        # limpa gráfico anterior
+        while self.plot_layout.count():
+            item = self.plot_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        stock_data = self.stocks_data.get(stock_name)
+        if not stock_data:
+            return
+
+        prices = stock_data.get('daysData2y', [])
+        average_price = stock_data.get('average_price', None)
+
+        if not prices or average_price is None:
+            return
+
+        plot = plot_1d_complex(
+            prices,
+            average_price,
+            color="blue",
+            width=2
+        )
+        plot.setTitle(stock_name)
+
+        self.plot_layout.addWidget(plot)
+
+    def on_table_context_menu(self, pos):
+        # índice lógico (row / column)
+        index = self.tableWidget.indexAt(pos)
+        if not index.isValid():
+            return
+
+        row    = index.row()
+        column = index.column()
+
+        item = self.tableWidget.item(row, column)
+        if not item:
+            return
+
+        cell_text = item.text()
+
+        # nome do stock (sempre da coluna 'stock')
+        id_stock   = self.column_keys.index('stock')
+        stock_item = self.tableWidget.item(row, id_stock)
+        stock_name = stock_item.text() if stock_item else ""
+
+        menu = QMenu(self.tableWidget)
+
+        # --- Copy ---
+        action_copy = menu.addAction("Copy cell")
+        action_copy.triggered.connect(
+            lambda: QApplication.clipboard().setText(cell_text)
+        )
+
+        # --- Search Google ---
+        if stock_name:
+            action_search = menu.addAction(f"Search Google: {stock_name}")
+            action_search.triggered.connect(
+                lambda: QDesktopServices.openUrl(
+                    QUrl(f"https://www.google.com/search?q={stock_name}")
+                )
+            )
+            
+        # --- Search Yahoo ---
+        if stock_name:
+            action_search = menu.addAction(f"Search Yahoo finance: {stock_name}")
+            action_search.triggered.connect(
+                lambda: QDesktopServices.openUrl(
+                    QUrl(f"https://finance.yahoo.com/quote/{stock_name}/")
+                )
+            )
+        
+        # mostra o menu na posição correta
+        global_pos = self.tableWidget.viewport().mapToGlobal(pos)
+        menu.exec_(global_pos)
 
 
     def callback_item_changed(self, item):
