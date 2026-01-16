@@ -21,9 +21,11 @@ import math
 from stock_viewer.modules.stock       import agregate_more_stock_info
 from stock_viewer.modules.text_editor import open_with_default_text_editor
 from stock_viewer.modules.categorize  import categorize_stocks
+from stock_viewer.modules.wabout      import show_about_window
 
 import stock_viewer.about as about
 import stock_viewer.modules.configure as configure 
+
 
 DEFAULT_TABLE_CONFIG_PATH = os.path.join(   os.path.expanduser("~"),
                                             ".config",
@@ -66,7 +68,7 @@ DEFAULT_TABLE_CONTENT={
 }
 
 DEFAULT_PROGRAM_CONTENT={ 
-    "button_prog_configure": "Configure",
+    "button_prog_configure": "Settings",
     "button_prog_configure_tooltip": "Open the configure Json file of program",  
     "button_update": "To update",
     "button_update_tooltip": "To update in the program the quantities and average prices from a JSON file.",
@@ -78,7 +80,44 @@ DEFAULT_PROGRAM_CONTENT={
     "button_about_tooltip": "About the program",
     "toolbutton_icon_size": 32,
     "window_width": 1200,
-    "window_height": 800
+    "window_height": 800,
+    "data_visualization": "Data Visualization",
+    "table_settings": "Table settings",
+    "stocks_path_edit": "Select *.stocks.json",
+    "stocks_path_edit_tooltip": "Path to the stocks.json file that contains the stock data",
+    "stocks_button": "Select *.stocks.json",
+    "stocks_button_tooltip": "Click to select the *.stocks.json file",
+    "update_button": "To update",
+    "update_button_tooltip": "Click to update data for selected files",
+    "select_group": "Select a group:",
+    "select_group_tooltip": "Choose a stock group to view its details",
+    "table_tooltip": "Table displaying the shares, average prices, quantities and total amounts of the selected group",
+    "total_amount": "Total amount/gain of group: ",
+    "total_amount_tooltip": "Shows the total amount invested in the selected stock group",
+    "config_path_edit": "Select the *.stock-viewer.table.json file",
+    "config_path_edit_tooltip": "Path to the stock-viewer.table.json file that contains the columns configuration",
+    "config_path_edit_label": "Configuration File:",
+    "config_button": "Select Configuration",
+    "config_button_tooltip": "Click to select the *.stock-viewer.table.json file",
+    "config_edit_button": "Edit configuration file",
+    "config_edit_button_tooltip": "Click to open the *.stock-viewer.table.json file",
+    "update_config_button": "Update Configuration",
+    "update_config_button_tooltip": "Click to update the column configuration in the table",
+    "select_stocks_json_file": "Select the *.stocks.json file",
+    "select_stocks_json_file_filter": "Stocks JSON Files (*.stocks.json)",
+    "select_table_json_file": "Select the *.stock-viewer.table.json file",
+    "select_table_json_file_filter": "Config JSON Files (*.stock-viewer.table.json)",
+    "green_color": "#d3ffc7",
+    "red_color": "#ffc9d6",
+    "search_yahoo": "Search Yahoo finance",
+    "search_google": "Search Google",
+    "copy_cell": "Copy cell", 
+    "plot_color": "blue", 
+    "plot_linewidth": 2,
+    "plot_bgcolor": "white", 
+    "plot_pccolor": "red", 
+    "plot_xlabel": "Working days",
+    "plot_ylabel": "Price"
 }
 
 configure.verify_default_config(DEFAULT_TABLE_CONFIG_PATH, default_content=DEFAULT_TABLE_CONTENT)
@@ -100,9 +139,17 @@ def plot_1d_simple_widget(prices,color="red", width=1):
     
     return w
 
-def plot_1d_complex(prices, average_price, color="red", width=2):
+def plot_1d_complex(prices, 
+                    average_price, 
+                    color="red", 
+                    width=2,
+                    bgcolor="white", 
+                    pccolor="red", 
+                    xlabel="Working days",
+                    ylabel="Price" ):
+                    
     w = PlotWidget()
-    w.setBackground('w')
+    w.setBackground(bgcolor)
 
     if not prices:
         return w
@@ -128,13 +175,13 @@ def plot_1d_complex(prices, average_price, color="red", width=2):
     avg_line = pg.InfiniteLine(
         pos=average_price,
         angle=0,
-        pen=pg.mkPen('gray', width=2, style=Qt.DashLine)
+        pen=pg.mkPen(pccolor, width=width, style=Qt.DashLine)
     )
     w.addItem(avg_line)
 
     # labels e grid
-    w.setLabel('left', 'Price')
-    w.setLabel('bottom', 'Working days')
+    w.setLabel('left', ylabel)
+    w.setLabel('bottom', xlabel)
 
     w.showGrid(x=True, y=True, alpha=0.3)
 
@@ -148,16 +195,27 @@ def plot_1d_complex(prices, average_price, color="red", width=2):
     return w
 
 
-def day_data_color_and_percent(prices):
+def day_data_color_and_percent(prices, green_color="green", red_color="red"):
     if len(prices)==0:
         return "white", 0.0
 
     percent = (prices[-1] - prices[0])*100.0/prices[0]
 
     if prices[0]<prices[-1]:
-        return "green", percent
+        return green_color, percent
 
-    return "red", percent
+    return red_color, percent
+
+
+def dicts_to_keys_titles(lista):
+    list_keys=[];
+    list_titles=[];
+    list_tooltips=[];
+    for d in lista:
+        list_keys.append(d['key'])
+        list_titles.append(d['title'])
+        list_tooltips.append(d['tooltip'])
+    return list_keys,list_titles,list_tooltips
 
 # Subclassificando QTableWidgetItem para suportar ordenação numérica, incluindo NaN
 class NumericTableWidgetItem(QTableWidgetItem):
@@ -193,17 +251,10 @@ class NumericTableWidgetItem(QTableWidgetItem):
         # Compara numericamente se ambos os valores são válidos
         return value1 < value2
 
-def dicts_to_keys_titles(lista):
-    list_keys=[];
-    list_titles=[];
-    list_tooltips=[];
-    for d in lista:
-        list_keys.append(d['key'])
-        list_titles.append(d['title'])
-        list_tooltips.append(d['tooltip'])
-    return list_keys,list_titles,list_tooltips
         
-
+################################################################################
+################################################################################
+################################################################################
 class StocksViewer(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -237,8 +288,8 @@ class StocksViewer(QMainWindow):
         self.table_tab = QWidget()
         self.config_tab = QWidget()
 
-        self.tab_widget.addTab(self.table_tab, 'Data Visualization')
-        self.tab_widget.addTab(self.config_tab, 'Settings')
+        self.tab_widget.addTab(self.table_tab , CONFIG["data_visualization"])
+        self.tab_widget.addTab(self.config_tab, CONFIG["table_settings"])
 
         self.setup_table_tab()
         self.setup_config_tab()
@@ -257,13 +308,16 @@ class StocksViewer(QMainWindow):
 
         # Layout horizontal para stocks.json
         stocks_layout = QHBoxLayout()
+        
         self.stocks_path_edit = QLineEdit(self)
-        self.stocks_path_edit.setPlaceholderText('Select *.stocks.json')
-        self.stocks_path_edit.setToolTip('Path to the stocks.json file that contains the stock data')
+        self.stocks_path_edit.setPlaceholderText(CONFIG["stocks_path_edit"])
+        self.stocks_path_edit.setToolTip(CONFIG["stocks_path_edit_tooltip"])
         stocks_layout.addWidget(self.stocks_path_edit)
 
-        self.stocks_button = QPushButton('Select *.stocks.json', self)
-        self.stocks_button.setToolTip('Click to select the *.stocks.json file')
+        self.stocks_button = QPushButton(CONFIG["stocks_button"], self)
+        self.stocks_button.setToolTip(CONFIG["stocks_button_tooltip"])
+        self.stocks_button.setIcon(QIcon.fromTheme("document-open"))
+        self.stocks_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
         self.stocks_button.clicked.connect(self.select_stocks_file)
         stocks_layout.addWidget(self.stocks_button)
 
@@ -273,8 +327,8 @@ class StocksViewer(QMainWindow):
         buttons_layout = QHBoxLayout()
         
         # Botão de Atualizar
-        self.update_button = QPushButton('To update', self)
-        self.update_button.setToolTip('Click to update data for selected files')
+        self.update_button = QPushButton(CONFIG["update_button"], self)
+        self.update_button.setToolTip(CONFIG["update_button_tooltip"])
         self.update_button.setIcon(QIcon.fromTheme("view-refresh"))
         self.update_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
         self.update_button.clicked.connect(self.update_data)
@@ -321,19 +375,19 @@ class StocksViewer(QMainWindow):
         layout.addLayout(buttons_layout)
 
         # Label
-        self.label = QLabel('Select a group of actions:')
+        self.label = QLabel(CONFIG["select_group"])
         layout.addWidget(self.label)
 
         # ComboBox para selecionar o grupo
         self.comboBox = QComboBox()
-        self.comboBox.setToolTip('Choose a stock group to view its details')
+        self.comboBox.setToolTip(CONFIG["select_group_tooltip"])
         self.comboBox.currentTextChanged.connect(self.display_table)
         self.comboBox.setStyleSheet('''
             QComboBox {
                 color: #000000;               /* Cor do texto */
                 background-color: #DDDDFF;    /* Cor de fundo */
                 border: 2px solid #AAAAEE;    /* Borda azul-escuro */
-                /*padding: 5px;*/                 /* Espaçamento interno */
+                /*padding: 5px;*/             /* Espaçamento interno */
             }
             QComboBox QAbstractItemView {
                 background-color: #DDDDFF;    /* Fundo das opções ao abrir */
@@ -344,14 +398,13 @@ class StocksViewer(QMainWindow):
         
         layout.addWidget(self.comboBox)
 
-
         # splitter vertical
         self.splitter = QSplitter(Qt.Vertical)
 
         # Tabela para mostrar os stocks
         self.tableWidget = QTableWidget()
-        self.tableWidget.setToolTip('Table displaying the shares, average prices, quantities and total amounts of the selected group')
-        self.tableWidget.setSortingEnabled(True)# Habilitar a ordenação ao clicar nos títulos das colunas
+        self.tableWidget.setToolTip(CONFIG["table_tooltip"])
+        self.tableWidget.setSortingEnabled(True) # Habilitar a ordenação ao clicar nos títulos das colunas
         self.tableWidget.itemChanged.connect(self.callback_item_changed)
         self.tableWidget.currentCellChanged.connect(self.on_current_cell_changed)
         self.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -375,13 +428,12 @@ class StocksViewer(QMainWindow):
         layout.addWidget(self.splitter)
 
         # Label para mostrar o montante total do grupo
-        self.total_label = QLabel('Total amount and gain of group: ')
-        self.total_label.setToolTip('Shows the total amount invested in the selected stock group')
+        self.total_label = QLabel(CONFIG["total_amount"])
+        self.total_label.setToolTip(CONFIG["total_amount_tooltip"])
         font = QFont()
         font.setBold(True)
         #font.setPointSize(14)
         self.total_label.setFont(font) # aplica negrito
-        
         self.total_label.setStyleSheet('color: black; background-color: #DDDDFF;') #border: 2px solid black; padding: 5px;
         
         layout.addWidget(self.total_label)
@@ -393,31 +445,43 @@ class StocksViewer(QMainWindow):
 
         # Layout horizontal para config.json
         self.config_path_edit = QLineEdit(self)
-        self.config_path_edit.setPlaceholderText('Select the *.stock-viewer.table.json file')
-        self.config_path_edit.setToolTip('Path to the stock-viewer.table.json file that contains the columns configuration')
+        self.config_path_edit.setPlaceholderText(CONFIG["config_path_edit"])
+        self.config_path_edit.setToolTip(CONFIG["config_path_edit_tooltip"])
         self.config_path_edit.setText(DEFAULT_TABLE_CONFIG_PATH)
-        layout.addRow('Configuration File:', self.config_path_edit)
+        layout.addRow(CONFIG["config_path_edit_label"], self.config_path_edit)
 
-        self.config_button = QPushButton('Select Configuration', self)
-        self.config_button.setToolTip('Click to select the *.stock-viewer.table.json file')
+        self.config_button = QPushButton(CONFIG["config_button"], self)
+        self.config_button.setToolTip(CONFIG["config_button_tooltip"])
         self.config_button.clicked.connect(self.select_config_file)
         layout.addRow('', self.config_button)
 
-        self.config_edit_button = QPushButton('Edit configuration file', self)
-        self.config_edit_button.setToolTip('Click to open the *.stock-viewer.table.json file')
+        self.config_edit_button = QPushButton(CONFIG["config_edit_button"], self)
+        self.config_edit_button.setToolTip(CONFIG["config_edit_button_tooltip"])
         self.config_edit_button.clicked.connect(self.edit_config_file)
         layout.addRow('', self.config_edit_button)
 
         # Botão de Atualizar Configuração
-        self.update_config_button = QPushButton('Update Configuration', self)
-        self.update_config_button.setToolTip('Click to update the column configuration in the table')
+        self.update_config_button = QPushButton(CONFIG["update_config_button"], self)
+        self.update_config_button.setToolTip(CONFIG["update_config_button_tooltip"])
         self.update_config_button.clicked.connect(self.update_table_columns)
         layout.addRow('', self.update_config_button)
 
         self.config_tab.setLayout(layout)
 
     def about_data(self):
-        print("About")
+        data={
+            "version": about.__version__,
+            "package": about.__package__,
+            "program_name": about.__program_name__,
+            "author": about.__author__,
+            "email": about.__email__,
+            "description": about.__description__,
+            "url_source": about.__url_source__,
+            "url_doc": about.__url_doc__,
+            "url_funding": about.__url_funding__,
+            "url_bugs": about.__url_bugs__
+        }
+        show_about_window(data,self.icon_path)
         
     def on_coffee_click(self):
         QDesktopServices.openUrl(QUrl("https://ko-fi.com/trucomanx"))
@@ -426,14 +490,20 @@ class StocksViewer(QMainWindow):
         open_with_default_text_editor(PROGRAM_CONFIG_PATH)
         
     def select_stocks_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Select the stocks.json file', '', 'Stocks JSON Files (*.stocks.json)')
+        path, _ = QFileDialog.getOpenFileName(  self, 
+                                                CONFIG["select_stocks_json_file"], 
+                                                '', 
+                                                CONFIG["select_stocks_json_file_filter"] )
         if path:
             self.stocks_path_edit.setText(path)
             self.update_data()
 
 
     def select_config_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Select the stock-viewer.table.json file', '', 'Config JSON Files (*.stock-viewer.table.json)')
+        path, _ = QFileDialog.getOpenFileName(  self, 
+                                                CONFIG["select_table_json_file"], 
+                                                '', 
+                                                CONFIG["select_table_json_file_filter"] )
         if path:
             self.config_path_edit.setText(path)
             self.config_data=self.load_config_file();
@@ -693,7 +763,7 @@ class StocksViewer(QMainWindow):
             total_group_amount += stock_data.get('total_amount', 0)
             total_group_gain   += stock_data.get('capital_gain', 0)
 
-        msg = 'Total amount and gain of group: '
+        msg = CONFIG["total_amount_tooltip"]
         msg+= f'{total_group_amount/1000.0:.3f} K'
         msg+= ' / '
         msg+= f'{total_group_gain/1000.0:.3f} K'
@@ -713,9 +783,9 @@ class StocksViewer(QMainWindow):
             currentPrice = float(price_current_item.text())
             
             if currentPrice > price_mean:
-                price_current_item.setBackground(QColor('#d3ffc7')) # green
+                price_current_item.setBackground(QColor(CONFIG["green_color"])) # green
             else:
-                price_current_item.setBackground(QColor('#ffc9d6')) # red
+                price_current_item.setBackground(QColor(CONFIG["red_color"])) # red
     
     def update_color_generic(self,name,row):
         item = self.tableWidget.item(row, self.column_keys.index(name)) 
@@ -724,9 +794,9 @@ class StocksViewer(QMainWindow):
             value  = float(item.text())
     
             if value>0:
-                item.setBackground(QColor('#d3ffc7')) # green
+                item.setBackground(QColor(CONFIG["green_color"])) # green
             else:
-                item.setBackground(QColor('#ffc9d6')) # red
+                item.setBackground(QColor(CONFIG["red_color"])) # red
     
     def update_colors_in_table_items(self):
         for row in range(self.tableWidget.rowCount()):
@@ -747,10 +817,23 @@ class StocksViewer(QMainWindow):
         stock_name = stock_item.text()
 
         # mostra gráfico 2y no painel inferior
-        self.show_stock_plot_2y(stock_name)
+        self.show_stock_plot_2y(stock_name, 
+                                color=CONFIG["plot_color"], 
+                                width=CONFIG["plot_linewidth"],
+                                bgcolor=CONFIG["plot_bgcolor"], 
+                                pccolor=CONFIG["plot_pccolor"], 
+                                xlabel=CONFIG["plot_xlabel"],
+                                ylabel=CONFIG["plot_ylabel"] )
 
 
-    def show_stock_plot_2y(self, stock_name):
+    def show_stock_plot_2y( self, 
+                            stock_name, 
+                            color="blue", 
+                            width=2,
+                            bgcolor="white", 
+                            pccolor="red", 
+                            xlabel="Working days",
+                            ylabel="Price" ):
         # limpa gráfico anterior
         while self.plot_layout.count():
             item = self.plot_layout.takeAt(0)
@@ -771,8 +854,12 @@ class StocksViewer(QMainWindow):
         plot = plot_1d_complex(
             prices,
             average_price,
-            color="blue",
-            width=2
+            color=color,
+            width=width,
+            bgcolor=bgcolor, 
+            pccolor=pccolor, 
+            xlabel=xlabel,
+            ylabel=ylabel
         )
         plot.setTitle(stock_name)
 
@@ -801,14 +888,14 @@ class StocksViewer(QMainWindow):
         menu = QMenu(self.tableWidget)
 
         # --- Copy ---
-        action_copy = menu.addAction("Copy cell")
+        action_copy = menu.addAction(CONFIG["copy_cell"])
         action_copy.triggered.connect(
             lambda: QApplication.clipboard().setText(cell_text)
         )
 
         # --- Search Google ---
         if stock_name:
-            action_search = menu.addAction(f"Search Google: {stock_name}")
+            action_search = menu.addAction(CONFIG["search_google"]+f": {stock_name}")
             action_search.triggered.connect(
                 lambda: QDesktopServices.openUrl(
                     QUrl(f"https://www.google.com/search?q={stock_name}")
@@ -817,7 +904,7 @@ class StocksViewer(QMainWindow):
             
         # --- Search Yahoo ---
         if stock_name:
-            action_search = menu.addAction(f"Search Yahoo finance: {stock_name}")
+            action_search = menu.addAction(CONFIG["search_yahoo"]+f": {stock_name}")
             action_search.triggered.connect(
                 lambda: QDesktopServices.openUrl(
                     QUrl(f"https://finance.yahoo.com/quote/{stock_name}/")
