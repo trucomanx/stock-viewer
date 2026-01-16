@@ -23,6 +23,8 @@ from stock_viewer.modules.text_editor import open_with_default_text_editor
 from stock_viewer.modules.categorize  import categorize_stocks
 from stock_viewer.modules.wabout      import show_about_window
 
+from stock_viewer.desktop import create_desktop_file, create_desktop_directory, create_desktop_menu
+
 import stock_viewer.about as about
 import stock_viewer.modules.configure as configure 
 

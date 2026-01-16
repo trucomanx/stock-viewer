@@ -2,3 +2,5 @@
 /program/stock_viewer/__pycache__
 /src/stock_viewer/__pycache__
 /src/stock_viewer/modules/__pycache__/
+/src/dist/
+/src/stock_viewer.egg-info/
