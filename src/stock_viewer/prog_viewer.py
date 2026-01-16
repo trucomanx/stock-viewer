@@ -14,7 +14,6 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui  import QColor, QIcon, QFont, QDesktopServices
 from PyQt5.QtCore import Qt, QUrl, QSize
 
-from pyqtgraph import PlotWidget #, plot
 import pyqtgraph as pg
 import math
 
@@ -119,7 +118,8 @@ DEFAULT_PROGRAM_CONTENT={
     "plot_bgcolor": "white", 
     "plot_pccolor": "red", 
     "plot_xlabel": "Working days",
-    "plot_ylabel": "Price"
+    "plot_ylabel": "Price",
+    "plot_ylabel2": "Variation"
 }
 
 configure.verify_default_config(DEFAULT_TABLE_CONFIG_PATH, default_content=DEFAULT_TABLE_CONTENT)
@@ -128,7 +128,7 @@ configure.verify_default_config(PROGRAM_CONFIG_PATH      , default_content=DEFAU
 CONFIG=configure.load_config(PROGRAM_CONFIG_PATH)
 
 def plot_1d_simple_widget(prices,color="red", width=1):
-    w = PlotWidget()
+    w = pg.PlotWidget()
     time=list(range(len(prices)));
     w.plot(
         time, 
@@ -141,6 +141,18 @@ def plot_1d_simple_widget(prices,color="red", width=1):
     
     return w
 
+class PercentAxis(pg.AxisItem):
+    def __init__(self, average_price, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.avg = average_price
+
+    def tickStrings(self, values, scale, spacing):
+        return [
+            f"{(v / self.avg - 1) * 100:+.1f}%"
+            for v in values
+        ]
+
+
 def plot_1d_complex(prices, 
                     average_price, 
                     color="red", 
@@ -148,22 +160,22 @@ def plot_1d_complex(prices,
                     bgcolor="white", 
                     pccolor="red", 
                     xlabel="Working days",
-                    ylabel="Price" ):
-                    
-    w = PlotWidget()
-    w.setBackground(bgcolor)
+                    ylabel="Price",
+                    ylabel2="Variation"):
 
     if not prices:
-        return w
+        return pg.PlotWidget()
 
     n = len(prices)
-    
-    if n==0:
-        return w
-
-    # eixo X: dias negativos até hoje (0)
     x = list(range(-n + 1, 1))
     y = prices
+
+    # eixo direito percentual
+    right_axis = PercentAxis(average_price, orientation='right')
+
+    w = pg.PlotWidget(axisItems={'right': right_axis})
+    w.setBackground(bgcolor)
+    w.showAxis('right')
 
     # curva de preços
     w.plot(
@@ -173,7 +185,7 @@ def plot_1d_complex(prices,
         antialias=True
     )
 
-    # linha horizontal do preço médio
+    # linha média (0%)
     avg_line = pg.InfiniteLine(
         pos=average_price,
         angle=0,
@@ -181,20 +193,19 @@ def plot_1d_complex(prices,
     )
     w.addItem(avg_line)
 
-    # labels e grid
+    # labels
     w.setLabel('left', ylabel)
+    w.setLabel('right', ylabel2)
     w.setLabel('bottom', xlabel)
 
+    # grid
     w.showGrid(x=True, y=True, alpha=0.3)
 
-    # margem para não colar no topo
+    # margem visual
     w.getViewBox().setDefaultPadding(0.05)
 
-    # interação
-    #w.setMouseEnabled(x=False, y=False)  # tabela-friendly
-    #w.setMenuEnabled(False)
-
     return w
+
 
 
 def day_data_color_and_percent(prices, green_color="green", red_color="red"):
@@ -825,7 +836,8 @@ class StocksViewer(QMainWindow):
                                 bgcolor=CONFIG["plot_bgcolor"], 
                                 pccolor=CONFIG["plot_pccolor"], 
                                 xlabel=CONFIG["plot_xlabel"],
-                                ylabel=CONFIG["plot_ylabel"] )
+                                ylabel=CONFIG["plot_ylabel"],
+                                ylabel2=CONFIG["plot_ylabel2"] )
 
 
     def show_stock_plot_2y( self, 
@@ -835,7 +847,8 @@ class StocksViewer(QMainWindow):
                             bgcolor="white", 
                             pccolor="red", 
                             xlabel="Working days",
-                            ylabel="Price" ):
+                            ylabel="Price",
+                            ylabel2="Variation" ):
         # limpa gráfico anterior
         while self.plot_layout.count():
             item = self.plot_layout.takeAt(0)
@@ -861,7 +874,8 @@ class StocksViewer(QMainWindow):
             bgcolor=bgcolor, 
             pccolor=pccolor, 
             xlabel=xlabel,
-            ylabel=ylabel
+            ylabel=ylabel,
+            ylabel2=ylabel2
         )
         plot.setTitle(stock_name)
 
