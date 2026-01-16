@@ -12,12 +12,12 @@ from PyQt5.QtWidgets import (
 )
 
 from PyQt5.QtGui  import QColor, QIcon, QFont, QDesktopServices
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QSize
 
-from stock  import agregate_more_stock_info
-from config import load_json_config_file
-from text_editor import open_with_default_text_editor
-from categorize  import categorize_stocks
+from stock_viewer.modules.stock       import agregate_more_stock_info
+from stock_viewer.modules.config      import load_json_config_file
+from stock_viewer.modules.text_editor import open_with_default_text_editor
+from stock_viewer.modules.categorize  import categorize_stocks
 
 from pyqtgraph import PlotWidget #, plot
 import pyqtgraph as pg
@@ -218,6 +218,7 @@ class StocksViewer(QMainWindow):
         self.update_button = QPushButton('To update', self)
         self.update_button.setToolTip('Click to update data for selected files')
         self.update_button.setIcon(QIcon.fromTheme("view-refresh"))
+        self.update_button.setIconSize(QSize(32, 32))
         self.update_button.clicked.connect(self.update_data)
         buttons_layout.addWidget(self.update_button)
 
@@ -225,6 +226,7 @@ class StocksViewer(QMainWindow):
         self.save_button = QPushButton('Save', self)
         self.save_button.setToolTip('Click to save changes made to stock data')
         self.save_button.setIcon(QIcon.fromTheme("document-save"))
+        self.save_button.setIconSize(QSize(32, 32))
         self.save_button.clicked.connect(self.save_data)
         buttons_layout.addWidget(self.save_button)
 
@@ -237,6 +239,7 @@ class StocksViewer(QMainWindow):
         self.coffee_button = QPushButton('Coffee', self)
         self.coffee_button.setToolTip('Buy me a coffee')
         self.coffee_button.setIcon(QIcon.fromTheme("emblem-favorite"))
+        self.coffee_button.setIconSize(QSize(32, 32))
         self.coffee_button.clicked.connect(self.on_coffee_click)
         buttons_layout.addWidget(self.coffee_button)
         
@@ -244,6 +247,7 @@ class StocksViewer(QMainWindow):
         self.about_button = QPushButton('About', self)
         self.about_button.setToolTip('Click open about information')
         self.about_button.setIcon(QIcon.fromTheme("help-about"))
+        self.about_button.setIconSize(QSize(32, 32))
         self.about_button.clicked.connect(self.about_data)
         buttons_layout.addWidget(self.about_button)
 
