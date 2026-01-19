@@ -204,6 +204,16 @@ def plot_1d_complex(prices,
     # margem visual
     w.getViewBox().setDefaultPadding(0.05)
 
+    # força 13 ticks no eixo X
+    ticks = []
+    step = (x[-1] - x[0]) / 12
+
+    for i in range(13):
+        value = x[0] + i * step
+        ticks.append((value, f"{int(value)}"))
+
+    w.getAxis('bottom').setTicks([ticks])
+
     return w
 
 
@@ -877,7 +887,7 @@ class StocksViewer(QMainWindow):
             ylabel=ylabel,
             ylabel2=ylabel2
         )
-        plot.setTitle(stock_name)
+        plot.setTitle("2y - "+stock_name)
 
         self.plot_layout.addWidget(plot)
 

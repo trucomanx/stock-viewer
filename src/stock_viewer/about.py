@@ -1,6 +1,6 @@
 # about.py
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __package__ = "stock_viewer"
 __program_name__ = "stock-viewer"
 __author__ = "Fernando Pujaico Rivera" 
