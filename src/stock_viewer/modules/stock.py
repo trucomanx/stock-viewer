@@ -3,6 +3,10 @@
 # pip install yfinance
 import yfinance as yf
 import json
+import math
+import pandas as pd
+import numpy as np
+
 
 from PyQt5.QtWidgets import  QApplication
 
@@ -21,6 +25,137 @@ def price_hist(stock,period="6mo"):
         prices = []
     return prices
 
+def get_current_price(stock):
+
+    # 2️⃣ info (instável)
+    try:
+        price = stock.info.get("currentPrice") or stock.info.get("regularMarketPrice")
+        if isinstance(price, (int, float)):
+            return price
+    except Exception:
+        pass
+
+    # 1️⃣ fast_info (mais confiável)
+    try:
+        price = stock.fast_info.get("last_price")
+        if isinstance(price, (int, float)):
+            return price
+    except Exception:
+        pass
+
+
+    # 3️⃣ histórico (último recurso)
+    try:
+        hist = stock.history(period="1d", interval="1m")
+        if not hist.empty:
+            return float(hist["Close"].iloc[-1])
+    except Exception:
+        pass
+
+    return float("nan")
+
+def get_dividend_yield(stock):
+    # 1️⃣ tenta direto do info (se existir)
+    try:
+        dy = stock.info.get("dividendYield")
+        if isinstance(dy, (int, float)) and dy > 0:
+            return dy
+    except Exception:
+        pass
+
+    # 2️⃣ calcula manualmente (TTM)
+    try:
+        dividends = stock.dividends
+        if dividends is None or dividends.empty:
+            return float("nan")
+
+        dividends_ttm = dividends.last("365D").sum()
+
+        price = get_current_price(stock)
+        if not isinstance(price, (int, float)) or price <= 0:
+            return float("nan")
+
+        return dividends_ttm / price
+    except Exception:
+        pass
+
+    return float("nan")
+
+
+def get_five_year_avg_dividend_yield(stock):
+    # 1️⃣ usa Yahoo se existir
+    try:
+        dy5 = stock.info.get("fiveYearAvgDividendYield")
+        if isinstance(dy5, (int, float)) and dy5 > 0:
+            return dy5
+    except Exception:
+        pass
+
+    # 2️⃣ fallback: cálculo manual flexível
+    try:
+        dividends = stock.dividends
+        if dividends is None or dividends.empty:
+            return float("nan")
+
+        prices = stock.history(period="5y")["Close"]
+        if prices is None or prices.empty:
+            return float("nan")
+
+        df = pd.DataFrame({
+            "dividend": dividends,
+        })
+
+        # agrega dividendos por ano (sem exigir todos os anos)
+        yearly_div = df["dividend"].resample("Y").sum()
+
+        yearly_price = prices.resample("Y").mean()
+
+        merged = pd.concat([yearly_div, yearly_price], axis=1)
+        merged.columns = ["dividend", "price"]
+        merged = merged.dropna(subset=["price"])
+
+        if merged.empty:
+            return float("nan")
+
+        merged["yield"] = merged["dividend"] / merged["price"]
+
+        # aceita anos com dividendos zero
+        valid_years = merged["yield"].replace(0, np.nan).dropna()
+
+        # exige pelo menos 2 anos válidos
+        if len(valid_years) < 2:
+            return float("nan")
+
+        return float(valid_years.mean())
+    except Exception:
+        return float("nan")
+
+def get_forward_pe(stock):
+    # 1️⃣ Yahoo (se existir)
+    try:
+        pe = stock.info.get("forwardPE")
+        if isinstance(pe, (int, float)) and pe > 0:
+            return pe
+    except Exception:
+        pass
+
+    # 2️⃣ fallback: calcular se possível
+    try:
+        eps_fwd = stock.info.get("forwardEps")
+        price = get_current_price(stock)
+
+        if (
+            isinstance(eps_fwd, (int, float))
+            and eps_fwd > 0
+            and isinstance(price, (int, float))
+        ):
+            return price / eps_fwd
+    except Exception:
+        pass
+
+    return float("nan")
+
+
 def agregate_more_stock_info(stocks_data,progress=None):
     if progress is not None:
         progress.setMaximum(len(stocks_data));
@@ -34,7 +169,7 @@ def agregate_more_stock_info(stocks_data,progress=None):
             QApplication.processEvents()  # Permite que a interface responda
             progress.setValue(k+1);
         # currentPrice
-        stocks_data[stock_name]['currentPrice']=stock.info.get('currentPrice', float("nan"))
+        stocks_data[stock_name]['currentPrice']=get_current_price(stock) #stock.info.get('currentPrice', float("nan"))
         
         # total_amount
         stocks_data[stock_name]['total_amount']=stocks_data[stock_name]['currentPrice']*stocks_data[stock_name]['quantity'];
@@ -52,16 +187,16 @@ def agregate_more_stock_info(stocks_data,progress=None):
         stocks_data[stock_name]['longName']=stock.info.get('longName', 'N/A')
         
         # dividendYield
-        stocks_data[stock_name]['dividendYield']=stock.info.get('dividendYield', float("nan"))
+        stocks_data[stock_name]['dividendYield']=get_dividend_yield(stock)
         
         # fiveYearAvgDividendYield
-        stocks_data[stock_name]['fiveYearAvgDividendYield']=stock.info.get('fiveYearAvgDividendYield', float("nan"))
+        stocks_data[stock_name]['fiveYearAvgDividendYield']=get_five_year_avg_dividend_yield(stock)
         
         # profitMargins
         stocks_data[stock_name]['profitMargins']=stock.info.get('profitMargins', float("nan"))
         
         # forwardPE
-        stocks_data[stock_name]['forwardPE']=stock.info.get('forwardPE', float("nan"))
+        stocks_data[stock_name]['forwardPE']=get_forward_pe(stock)
         
         # pegRatio
         stocks_data[stock_name]['pegRatio']=stock.info.get('pegRatio', float("nan"))
