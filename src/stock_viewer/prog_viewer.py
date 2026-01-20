@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
 )
 
 from PyQt5.QtGui  import QColor, QIcon, QFont, QDesktopServices
-from PyQt5.QtCore import Qt, QUrl, QSize
+from PyQt5.QtCore import Qt, QUrl, QSize, QTimer
 
 import pyqtgraph as pg
 import math
@@ -512,14 +512,19 @@ class StocksViewer(QMainWindow):
     def on_configure_click(self):
         open_with_default_text_editor(PROGRAM_CONFIG_PATH)
         
+
     def select_stocks_file(self):
-        path, _ = QFileDialog.getOpenFileName(  self, 
-                                                CONFIG["select_stocks_json_file"], 
-                                                '', 
-                                                CONFIG["select_stocks_json_file_filter"] )
+        path, _ = QFileDialog.getOpenFileName(  self,
+                                                CONFIG["select_stocks_json_file"],
+                                                '',
+                                                CONFIG["select_stocks_json_file_filter"]
+                                            )
+
         if path:
             self.stocks_path_edit.setText(path)
-            self.update_data()
+
+            # ⏳ deixa o Qt fechar e repintar o diálogo primeiro
+            QTimer.singleShot(0, self.update_data)
 
 
     def select_config_file(self):
@@ -541,23 +546,32 @@ class StocksViewer(QMainWindow):
         config_data = configure.load_config(config_path)
         
         return config_data;
-
+           
     def update_data(self):
-    
         self.setEnabled(False)
-        stocks_path = self.stocks_path_edit.text()
-        
-        if stocks_path:
-            self.stocks_data = self.load_json(stocks_path)
-            self.groups_data = categorize_stocks(stocks_path)
 
+        self.tableWidget.blockSignals(True)
+        self.tableWidget.setSortingEnabled(False)
 
-            self.stocks_data=agregate_more_stock_info(self.stocks_data,progress=self.progress)
-            self.populate_groups()
-            
-            self.display_table(self.comboBox.currentText())
-            self.update_colors_in_table_items()
-        self.setEnabled(True)
+        try:
+            stocks_path = self.stocks_path_edit.text()
+            if stocks_path:
+                self.stocks_data = self.load_json(stocks_path)
+                self.groups_data = categorize_stocks(stocks_path)
+                self.stocks_data = agregate_more_stock_info(
+                    self.stocks_data,
+                    progress=self.progress
+                )
+
+                self.populate_groups()
+                self.display_table(self.comboBox.currentText())
+                self.update_colors_in_table_items()
+
+        finally:
+            self.tableWidget.setSortingEnabled(True)
+            self.tableWidget.blockSignals(False)
+            self.setEnabled(True)
+
 
     def update_table_columns(self):
         self.config_data=self.load_config_file();
@@ -943,67 +957,92 @@ class StocksViewer(QMainWindow):
 
 
     def callback_item_changed(self, item):
-        id_stock = self.column_keys.index('stock')
-        id_avr   = self.column_keys.index('average_price')
-        id_qtty  = self.column_keys.index('quantity')
-        
-        row = item.row()
-        col = item.column()
-        
-        stock_name         = self.tableWidget.item(row, id_stock).text()
-        
-        average_price_item = self.tableWidget.item(row, id_avr)
-        quantity_item      = self.tableWidget.item(row, id_qtty)
-        
-        quantity      = 0
-        average_price = 0.0
-        if average_price_item:
-            average_price = float(average_price_item.text())
-        if quantity_item:
-            quantity = int(quantity_item.text())
-        
-        
-        ## average_price in stock_data
-        if col == id_avr:
-            self.update_color_currentPrice(row)
-            self.stocks_data[stock_name]["average_price"]=average_price
-            
-        ## quantity in stock_data
-        if col == id_qtty:
-            self.stocks_data[stock_name]["quantity"]=quantity
-        
-        ## total_amount in stock_data
-        if (col == id_qtty) or (col == id_avr):  # Apenas colunas de quantity e preço médio
-        
+        # Proteção global
+        self.tableWidget.blockSignals(True)
+        self.tableWidget.setSortingEnabled(False)
+
+        try:
+            id_stock = self.column_keys.index('stock')
+            id_avr   = self.column_keys.index('average_price')
+            id_qtty  = self.column_keys.index('quantity')
+
+            col = item.column()
+            row = item.row()
+
+            # Só reage a quantity e average_price
+            if col not in (id_qtty, id_avr):
+                return
+
+            stock_item = self.tableWidget.item(row, id_stock)
+            if not stock_item:
+                return
+
+            stock_name = stock_item.text()
+
+            average_price_item = self.tableWidget.item(row, id_avr)
+            quantity_item      = self.tableWidget.item(row, id_qtty)
+
+            try:
+                average_price = float(average_price_item.text()) if average_price_item else 0.0
+            except ValueError:
+                average_price = 0.0
+
+            try:
+                quantity = int(quantity_item.text()) if quantity_item else 0
+            except ValueError:
+                quantity = 0
+
+            # --- Atualiza stocks_data ---
+            if col == id_avr:
+                self.stocks_data[stock_name]["average_price"] = average_price
+                self.update_color_currentPrice(row)
+
+            if col == id_qtty:
+                self.stocks_data[stock_name]["quantity"] = quantity
+
+            # --- Cálculos ---
             initial_amount = quantity * average_price
-            total_amount   = quantity * self.stocks_data[stock_name]['currentPrice']
-            
-            self.stocks_data[stock_name]["total_amount"]=total_amount
-            
+            total_amount   = quantity * self.stocks_data[stock_name]["currentPrice"]
+
+            self.stocks_data[stock_name]["total_amount"] = total_amount
+
             # total_amount
-            total_amount_item = self.tableWidget.item(row, self.column_keys.index('total_amount'))
-            if total_amount_item:
-                total_amount_item.setText(f'{total_amount:.2f}')
+            col_total_amount = self.column_keys.index('total_amount')
+            item_total = self.tableWidget.item(row, col_total_amount)
+            if item_total:
+                item_total.setText(f"{total_amount:.2f}")
 
             # initial_amount
-            initial_amount_item = self.tableWidget.item(row, self.column_keys.index('initial_amount'))
-            if initial_amount_item:
-                initial_amount_item.setText(f'{initial_amount:.2f}')
-                
+            col_initial_amount = self.column_keys.index('initial_amount')
+            item_initial = self.tableWidget.item(row, col_initial_amount)
+            if item_initial:
+                item_initial.setText(f"{initial_amount:.2f}")
+
             # capital_gain
-            capital_gain_item = self.tableWidget.item(row, self.column_keys.index('capital_gain'))
-            if capital_gain_item:
-                value = total_amount-initial_amount
-                capital_gain_item.setText(f'{value:.2f}')
-                self.update_color_generic("capital_gain",row)
-                
+            col_capital_gain = self.column_keys.index('capital_gain')
+            item_gain = self.tableWidget.item(row, col_capital_gain)
+            if item_gain:
+                gain = total_amount - initial_amount
+                item_gain.setText(f"{gain:.2f}")
+                self.update_color_generic("capital_gain", row)
+
             # capital_gain_ratio
-            capital_gain_ratio_item = self.tableWidget.item(row, self.column_keys.index('capital_gain_ratio'))
-            if capital_gain_ratio_item:
-                value = (total_amount-initial_amount)*100.0/initial_amount
-                capital_gain_ratio_item.setText(f'{value:.2f}')
-                self.update_color_generic("capital_gain_ratio",row)
-                
+            col_ratio = self.column_keys.index('capital_gain_ratio')
+            item_ratio = self.tableWidget.item(row, col_ratio)
+            if item_ratio:
+                ratio = 0.0
+                if initial_amount != 0:
+                    ratio = (total_amount - initial_amount) * 100.0 / initial_amount
+                item_ratio.setText(f"{ratio:.2f}")
+                self.update_color_generic("capital_gain_ratio", row)
+
+        finally:
+            # 🔐 GARANTIA ABSOLUTA de restauração
+            self.tableWidget.setSortingEnabled(True)
+            self.tableWidget.blockSignals(False)
+
+
+
 # -------------------------------
 # Main
 # -------------------------------
