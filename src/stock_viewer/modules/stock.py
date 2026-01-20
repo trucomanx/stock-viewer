@@ -208,7 +208,6 @@ def get_peg_ratio(stock, years=3):
     except Exception:
         return math.nan
 
-
 def agregate_more_stock_info(stocks_data,progress=None):
     if progress is not None:
         progress.setMaximum(len(stocks_data));
@@ -234,7 +233,11 @@ def agregate_more_stock_info(stocks_data,progress=None):
         stocks_data[stock_name]['capital_gain']=stocks_data[stock_name]['total_amount']-stocks_data[stock_name]['initial_amount'];
         
         # capital_gain ratio
-        stocks_data[stock_name]['capital_gain_ratio']=(stocks_data[stock_name]['total_amount']-stocks_data[stock_name]['initial_amount'])/stocks_data[stock_name]['initial_amount'];
+        try:
+            stocks_data[stock_name]['capital_gain_ratio']=(stocks_data[stock_name]['total_amount']-stocks_data[stock_name]['initial_amount'])/stocks_data[stock_name]['initial_amount'];
+        except Exception:
+            stocks_data[stock_name]['capital_gain_ratio']=0.0;
+        
         
         # longName
         stocks_data[stock_name]['longName']=stock.info.get('longName', 'N/A')
