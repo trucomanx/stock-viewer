@@ -15,6 +15,7 @@ from PyQt5.QtGui  import QColor, QIcon, QFont, QDesktopServices
 from PyQt5.QtCore import Qt, QUrl, QSize, QTimer
 
 import pyqtgraph as pg
+import numpy as np
 import math
 
 from stock_viewer.modules.stock       import agregate_more_stock_info
@@ -153,15 +154,18 @@ class PercentAxis(pg.AxisItem):
         ]
 
 
-def plot_1d_complex(prices, 
-                    average_price, 
-                    color="red", 
-                    width=2,
-                    bgcolor="white", 
-                    pccolor="red", 
-                    xlabel="Working days",
-                    ylabel="Price",
-                    ylabel2="Variation"):
+def plot_1d_complex(
+    prices,
+    average_price,
+    color="red",
+    width=2,
+    bgcolor="white",
+    pccolor="red",
+    xlabel="Working days",
+    ylabel="Price",
+    ylabel2="Variation",
+    enable_crosshair=True,   # 👈 parâmetro novo
+):
 
     if not prices:
         return pg.PlotWidget()
@@ -177,43 +181,99 @@ def plot_1d_complex(prices,
     w.setBackground(bgcolor)
     w.showAxis('right')
 
-    # curva de preços
-    w.plot(
+    plot_item = w.getPlotItem()
+    vb = plot_item.getViewBox()
+
+    # curva
+    plot_item.plot(
         x,
         y,
         pen=pg.mkPen(color=color, width=width),
         antialias=True
     )
 
-    # linha média (0%)
+    # linha média
     avg_line = pg.InfiniteLine(
         pos=average_price,
         angle=0,
         pen=pg.mkPen(pccolor, width=width, style=Qt.DashLine)
     )
-    w.addItem(avg_line)
+    plot_item.addItem(avg_line)
 
-    # labels
-    w.setLabel('left', ylabel)
-    w.setLabel('right', ylabel2)
-    w.setLabel('bottom', xlabel)
+    # labels e grid
+    plot_item.setLabel('left', ylabel)
+    plot_item.setLabel('right', ylabel2)
+    plot_item.setLabel('bottom', xlabel)
 
-    # grid
-    w.showGrid(x=True, y=True, alpha=0.3)
+    plot_item.showGrid(x=True, y=True, alpha=0.3)
+    vb.setDefaultPadding(0.05)
 
-    # margem visual
-    w.getViewBox().setDefaultPadding(0.05)
+    # --------------------------------------------------
+    # CROSSHAIR + MOUSE (opcional)
+    # --------------------------------------------------
+    vline = None
+    label = None
 
-    # força 13 ticks no eixo X
-    ticks = []
-    step = (x[-1] - x[0]) / 12
+    if enable_crosshair:
+        vline = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen('gray', style=Qt.DashLine)
+        )
+        plot_item.addItem(vline, ignoreBounds=True)
 
-    for i in range(13):
-        value = x[0] + i * step
-        ticks.append((value, f"{int(value)}"))
+        label = pg.TextItem("", anchor=(0, 1), color=color)
+        plot_item.addItem(label)
 
-    w.getAxis('bottom').setTicks([ticks])
+        def mouse_moved(evt):
+            # proteção contra ViewBox inválido
+            if vb.width() < 20 or vb.height() < 20:
+                return
 
+            vr = vb.viewRect()
+            if vr.height() <= 20:
+                return
+
+            pos = evt[0]
+            if not plot_item.sceneBoundingRect().contains(pos):
+                return
+
+            mouse_point = vb.mapSceneToView(pos)
+            x_mouse = mouse_point.x()
+            y_mouse = mouse_point.y()
+
+            idx = int(round(x_mouse - x[0]))
+            if 0 <= idx < len(x):
+                y_plot = y[idx]
+
+                vline.setPos(x[idx])
+                label.setText(
+                    f"x: {x[idx]}\n"
+                    f"{ylabel}: {y_plot:.2f}"
+                )
+                label.setPos(x[idx], y_mouse)
+
+        # manter referência viva
+        w._mouse_proxy = pg.SignalProxy(
+            w.scene().sigMouseMoved,
+            rateLimit=60,
+            slot=mouse_moved
+        )
+
+    # --------------------------------------------------
+    # RANGE FIXO (evita pulo ao redimensionar)
+    # --------------------------------------------------
+    ymin = min(y)
+    ymax = max(y)
+
+    padding = (ymax - ymin) * 0.05 or 1.0
+    vb.setYRange(ymin - padding, ymax + padding, padding=0)
+
+    # 🔒 TRAVA O AUTORANGE (ESSENCIAL)
+    vb.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
+    vb.enableAutoRange(axis=pg.ViewBox.XAxis, enable=False)
+   
+    
     return w
 
 
