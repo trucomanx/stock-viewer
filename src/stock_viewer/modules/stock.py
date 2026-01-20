@@ -156,6 +156,59 @@ def get_forward_pe(stock):
     return float("nan")
 
 
+def get_peg_ratio(stock, years=3):
+    """
+    Retorna o PEG Ratio.
+    1) Usa pegRatio do Yahoo se existir
+    2) Caso contrário, calcula via crescimento histórico do lucro líquido
+    """
+
+    info = stock.info
+
+    # 1) Tentativa direta (Yahoo)
+    peg = info.get("pegRatio")
+    if peg is not None and peg > 0:
+        return float(peg)
+
+    try:
+        # P/E
+        pe = info.get("trailingPE")
+        if pe is None or pe <= 0:
+            return math.nan
+
+        # Demonstrativo de resultados
+        income = stock.income_stmt
+
+        if income is None or income.empty:
+            return math.nan
+
+        # Linha correta segundo Yahoo
+        if "Net Income" not in income.index:
+            return math.nan
+
+        net_income = income.loc["Net Income"].dropna()
+
+        if len(net_income) < years + 1:
+            return math.nan
+
+        # CAGR do lucro
+        ni_start = net_income.iloc[-(years + 1)]
+        ni_end = net_income.iloc[-1]
+
+        if ni_start <= 0 or ni_end <= 0:
+            return math.nan
+
+        growth = (ni_end / ni_start) ** (1 / years) - 1
+
+        if growth <= 0:
+            return math.nan
+
+        return pe / (growth * 100)
+
+    except Exception:
+        return math.nan
+
+
 def agregate_more_stock_info(stocks_data,progress=None):
     if progress is not None:
         progress.setMaximum(len(stocks_data));
@@ -199,7 +252,7 @@ def agregate_more_stock_info(stocks_data,progress=None):
         stocks_data[stock_name]['forwardPE']=get_forward_pe(stock)
         
         # pegRatio
-        stocks_data[stock_name]['pegRatio']=stock.info.get('pegRatio', float("nan"))
+        stocks_data[stock_name]['pegRatio']=get_peg_ratio(stock)
         
         # trailingEps
         stocks_data[stock_name]['trailingEps']=stock.info.get('trailingEps', float("nan"))
