@@ -621,9 +621,6 @@ class StocksViewer(QMainWindow):
     def update_data(self):
         self.setEnabled(False)
 
-        self.tableWidget.blockSignals(True)
-        self.tableWidget.setSortingEnabled(False)
-
         try:
             stocks_path = self.stocks_path_edit.text()
             if stocks_path:
@@ -631,22 +628,20 @@ class StocksViewer(QMainWindow):
                 self.groups_data = categorize_stocks(stocks_path)
                 self.stocks_data = agregate_more_stock_info(
                     self.stocks_data,
-                    progress=self.progress
+                    progress=self.progress,
+                    parent=self
                 )
 
                 self.populate_groups()
-                self.display_table(self.comboBox.currentText())
                 self.update_colors_in_table_items()
 
         finally:
-            self.tableWidget.setSortingEnabled(True)
-            self.tableWidget.blockSignals(False)
             self.setEnabled(True)
 
 
     def update_table_columns(self):
         self.config_data=self.load_config_file();
-        self.column_keys, self.column_titles = dicts_to_keys_titles(self.config_data["columns"])
+        self.column_keys, self.column_titles, self.column_tooltips = dicts_to_keys_titles(self.config_data["columns"])
         
         self.display_table(self.comboBox.currentText())
 
@@ -705,180 +700,185 @@ class StocksViewer(QMainWindow):
         if not group_name or group_name not in self.groups_data:
             return
 
-        group_stocks = self.groups_data[group_name]
-        total_group_amount = 0
-        total_group_gain = 0
-
-        # Configuração de colunas
-        self.tableWidget.clear()  # Limpa os dados da tabela
-        self.tableWidget.setColumnCount(len(self.column_titles))
-        self.tableWidget.setHorizontalHeaderLabels(self.column_titles)
+        self.tableWidget.blockSignals(True)
         self.tableWidget.setSortingEnabled(False)
         
-        # Adicionar os tooltips em todas as colunas
-        for i in range(self.tableWidget.columnCount()):
-            header_item = self.tableWidget.horizontalHeaderItem(i)  # Obter o item do cabeçalho
-            header_item.setToolTip(self.column_tooltips[i])
+        try: 
+            group_stocks = self.groups_data[group_name]
+            total_group_amount = 0
+            total_group_gain = 0
 
-        self.tableWidget.setRowCount(len(group_stocks))
-        
-        for row, stock in enumerate(group_stocks):
-            stock_data = self.stocks_data.get(stock, {})
+            # Configuração de colunas
+            self.tableWidget.clear()  # Limpa os dados da tabela
+            self.tableWidget.setColumnCount(len(self.column_titles))
+            self.tableWidget.setHorizontalHeaderLabels(self.column_titles)
             
-            value=str(stock)
-            for col, column in enumerate(self.column_keys):
+            # Adicionar os tooltips em todas as colunas
+            for i in range(self.tableWidget.columnCount()):
+                header_item = self.tableWidget.horizontalHeaderItem(i)  # Obter o item do cabeçalho
+                header_item.setToolTip(self.column_tooltips[i])
+
+            self.tableWidget.setRowCount(len(group_stocks))
+            
+            for row, stock in enumerate(group_stocks):
+                stock_data = self.stocks_data.get(stock, {})
                 
-                if column == "stock":
-                    item = QTableWidgetItem(stock)
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                value=str(stock)
+                for col, column in enumerate(self.column_keys):
                     
-                elif column == "average_price":
-                    value = stock_data.get('average_price', 0)
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    
-                elif column == "quantity":
-                    value = stock_data.get('quantity', 0)
-                    item = NumericTableWidgetItem(f'{value}')
-                    
-                elif column == "total_amount":
-                    value = stock_data.get('total_amount', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "initial_amount":
-                    value = stock_data.get('initial_amount', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "capital_gain":
-                    value = stock_data.get('capital_gain', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "capital_gain_ratio":
-                    value = stock_data.get('capital_gain_ratio', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "currentPrice":
-                    value = stock_data.get('currentPrice', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "longName":
-                    value = stock_data.get('longName', '') 
-                    item = QTableWidgetItem(f'{value}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    if column == "stock":
+                        item = QTableWidgetItem(stock)
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "average_price":
+                        value = stock_data.get('average_price', 0)
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        
+                    elif column == "quantity":
+                        value = stock_data.get('quantity', 0)
+                        item = NumericTableWidgetItem(f'{value}')
+                        
+                    elif column == "total_amount":
+                        value = stock_data.get('total_amount', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "initial_amount":
+                        value = stock_data.get('initial_amount', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "capital_gain":
+                        value = stock_data.get('capital_gain', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "capital_gain_ratio":
+                        value = stock_data.get('capital_gain_ratio', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "currentPrice":
+                        value = stock_data.get('currentPrice', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "longName":
+                        value = stock_data.get('longName', '') 
+                        item = QTableWidgetItem(f'{value}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
 
-                elif column == "daysData2y":
-                    prices = stock_data.get('daysData2y',[])
-                    color, percent = day_data_color_and_percent(prices)
-                    plot = plot_1d_simple_widget(prices, color=color)
-                    self.tableWidget.setCellWidget(row, col, plot)
-                    # ainda precisa de um item "vazio" para sorting funcionar
-                    item = QTableWidgetItem(f'{percent}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "daysData6mo":
-                    prices = stock_data.get('daysData6mo',[])
-                    color, percent = day_data_color_and_percent(prices)
-                    plot = plot_1d_simple_widget(prices, color=color)
-                    self.tableWidget.setCellWidget(row, col, plot)
-                    # ainda precisa de um item "vazio" para sorting funcionar
-                    item = QTableWidgetItem(f'{percent}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "daysData1mo":
-                    prices = stock_data.get('daysData1mo',[])
-                    color, percent = day_data_color_and_percent(prices)
-                    plot = plot_1d_simple_widget(prices, color=color)
-                    self.tableWidget.setCellWidget(row, col, plot)
-                    # ainda precisa de um item "vazio" para sorting funcionar
-                    item = QTableWidgetItem(f'{percent}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "dividendYield":
-                    value = stock_data.get('dividendYield', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*1.0:.2f}') # factor
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "fiveYearAvgDividendYield":
-                    value = stock_data.get('fiveYearAvgDividendYield', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}') # percentage no factor
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "forwardPE":
-                    value = stock_data.get('forwardPE', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "trailingEps":
-                    value = stock_data.get('trailingEps', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "pegRatio":
-                    value = stock_data.get('pegRatio', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "bookValue":
-                    value = stock_data.get('bookValue', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "priceToBook":
-                    value = stock_data.get('priceToBook', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "returnOnEquity":
-                    value = stock_data.get('returnOnEquity', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "payoutRatio":
-                    value = stock_data.get('payoutRatio', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "profitMargins":
-                    value = stock_data.get('profitMargins', float("nan")) 
-                    item = NumericTableWidgetItem(f'{value*100.0:.2f}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "sector":
-                    value = stock_data.get('sector', '') 
-                    item = QTableWidgetItem(f'{value}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                elif column == "industry":
-                    value = stock_data.get('industry', '') 
-                    item = QTableWidgetItem(f'{value}')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
-                    
-                else:
-                    item = QTableWidgetItem('')
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                    elif column == "daysData2y":
+                        prices = stock_data.get('daysData2y',[])
+                        color, percent = day_data_color_and_percent(prices)
+                        plot = plot_1d_simple_widget(prices, color=color)
+                        self.tableWidget.setCellWidget(row, col, plot)
+                        # ainda precisa de um item "vazio" para sorting funcionar
+                        item = QTableWidgetItem(f'{percent}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "daysData6mo":
+                        prices = stock_data.get('daysData6mo',[])
+                        color, percent = day_data_color_and_percent(prices)
+                        plot = plot_1d_simple_widget(prices, color=color)
+                        self.tableWidget.setCellWidget(row, col, plot)
+                        # ainda precisa de um item "vazio" para sorting funcionar
+                        item = QTableWidgetItem(f'{percent}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "daysData1mo":
+                        prices = stock_data.get('daysData1mo',[])
+                        color, percent = day_data_color_and_percent(prices)
+                        plot = plot_1d_simple_widget(prices, color=color)
+                        self.tableWidget.setCellWidget(row, col, plot)
+                        # ainda precisa de um item "vazio" para sorting funcionar
+                        item = QTableWidgetItem(f'{percent}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "dividendYield":
+                        value = stock_data.get('dividendYield', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value*1.0:.2f}') # factor
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "fiveYearAvgDividendYield":
+                        value = stock_data.get('fiveYearAvgDividendYield', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}') # percentage no factor
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "forwardPE":
+                        value = stock_data.get('forwardPE', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "trailingEps":
+                        value = stock_data.get('trailingEps', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "pegRatio":
+                        value = stock_data.get('pegRatio', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "bookValue":
+                        value = stock_data.get('bookValue', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "priceToBook":
+                        value = stock_data.get('priceToBook', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "returnOnEquity":
+                        value = stock_data.get('returnOnEquity', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "payoutRatio":
+                        value = stock_data.get('payoutRatio', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "profitMargins":
+                        value = stock_data.get('profitMargins', float("nan")) 
+                        item = NumericTableWidgetItem(f'{value*100.0:.2f}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "sector":
+                        value = stock_data.get('sector', '') 
+                        item = QTableWidgetItem(f'{value}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    elif column == "industry":
+                        value = stock_data.get('industry', '') 
+                        item = QTableWidgetItem(f'{value}')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
+                        
+                    else:
+                        item = QTableWidgetItem('')
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Torna a célula não editável
 
-                # Define a cor de fundo para as células não editáveis
-                if not (item.flags() & Qt.ItemIsEditable):
-                    item.setBackground(QColor('lightgray'))
-                
-                self.tableWidget.setItem(row, col, item)
+                    # Define a cor de fundo para as células não editáveis
+                    if not (item.flags() & Qt.ItemIsEditable):
+                        item.setBackground(QColor('lightgray'))
+                    
+                    self.tableWidget.setItem(row, col, item)
 
-            # Atualizar o montante total do grupo
-            total_group_amount += stock_data.get('total_amount', 0)
-            total_group_gain   += stock_data.get('capital_gain', 0)
+                # Atualizar o montante total do grupo
+                total_group_amount += stock_data.get('total_amount', 0)
+                total_group_gain   += stock_data.get('capital_gain', 0)
 
-        msg = CONFIG["total_amount"]
-        msg+= f'{total_group_amount/1000.0:.3f} K'
-        msg+= ' / '
-        msg+= f'{total_group_gain/1000.0:.3f} K'
-        self.total_label.setText(msg)
-        self.update_colors_in_table_items()
-        self.tableWidget.setSortingEnabled(True)
+            msg = CONFIG["total_amount"]
+            msg+= f'{total_group_amount/1000.0:.3f} K'
+            msg+= ' / '
+            msg+= f'{total_group_gain/1000.0:.3f} K'
+            self.total_label.setText(msg)
+            self.update_colors_in_table_items()
 
+        finally:
+            self.tableWidget.setSortingEnabled(True)
+            self.tableWidget.blockSignals(False)
 
 
     def update_color_currentPrice(self, row):
