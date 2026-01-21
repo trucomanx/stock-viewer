@@ -200,6 +200,23 @@ def plot_1d_complex(
     )
     plot_item.addItem(avg_line)
 
+    # --------------------------------------------------
+    # RANGE FIXO (evita pulo ao redimensionar)
+    # --------------------------------------------------
+    ymin = min(y)
+    ymax = max(y)
+    
+    ymin = min([average_price, ymin])
+    ymax = max([average_price, ymax])
+
+    padding = (ymax - ymin) * 0.05 or 1.0
+    vb.setYRange(ymin - padding, ymax + padding, padding=0)
+
+    # 🔒 TRAVA O AUTORANGE (ESSENCIAL)
+    vb.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
+    vb.enableAutoRange(axis=pg.ViewBox.XAxis, enable=False)
+    
+
     # labels e grid
     plot_item.setLabel('left', ylabel)
     plot_item.setLabel('right', ylabel2)
@@ -224,16 +241,16 @@ def plot_1d_complex(
 
         label = pg.TextItem("", anchor=(0, 1), color=color)
         plot_item.addItem(label)
+        
 
         def mouse_moved(evt):
             # proteção contra ViewBox inválido
             if vb.width() < 20 or vb.height() < 20:
                 return
 
-            vr = vb.viewRect()
-            if vr.height() <= 20:
-                return
-
+            #vr = vb.viewRect()
+            #print(vr.width(),vr.height())
+           
             pos = evt[0]
             if not plot_item.sceneBoundingRect().contains(pos):
                 return
@@ -260,19 +277,6 @@ def plot_1d_complex(
             slot=mouse_moved
         )
 
-    # --------------------------------------------------
-    # RANGE FIXO (evita pulo ao redimensionar)
-    # --------------------------------------------------
-    ymin = min(y)
-    ymax = max(y)
-
-    padding = (ymax - ymin) * 0.05 or 1.0
-    vb.setYRange(ymin - padding, ymax + padding, padding=0)
-
-    # 🔒 TRAVA O AUTORANGE (ESSENCIAL)
-    vb.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
-    vb.enableAutoRange(axis=pg.ViewBox.XAxis, enable=False)
-   
     
     return w
 
