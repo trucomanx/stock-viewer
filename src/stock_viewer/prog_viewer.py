@@ -215,7 +215,14 @@ def plot_1d_complex(
     # 🔒 TRAVA O AUTORANGE (ESSENCIAL)
     vb.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
     vb.enableAutoRange(axis=pg.ViewBox.XAxis, enable=False)
-    
+
+    # --------------------------------------------------
+    # CONFIGURAÇÃO DO EIXO X COM 13 TICKS
+    # --------------------------------------------------
+    import numpy as np
+    x_ticks = np.linspace(x[0], x[-1], 13)  # 13 ticks -> 12 partes
+    x_labels = [(pos, f"{int(pos)}") for pos in x_ticks]
+    plot_item.getAxis('bottom').setTicks([x_labels])
 
     # labels e grid
     plot_item.setLabel('left', ylabel)
