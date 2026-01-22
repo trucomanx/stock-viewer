@@ -106,10 +106,6 @@ def get_five_year_avg_dividend_yield(stock):
         if dividends is None or dividends.empty:
             return float("nan")
 
-        prices = stock.history(period="5y")["Close"]
-        if prices is None or prices.empty:
-            return float("nan")
-
         df = pd.DataFrame({
             "dividend": dividends,
         })
@@ -117,7 +113,8 @@ def get_five_year_avg_dividend_yield(stock):
         # agrega dividendos por ano (sem exigir todos os anos)
         yearly_div = df["dividend"].resample("Y").sum()
 
-        yearly_price = prices.resample("Y").mean()
+        prices = price_hist(stock, period="5y")
+        yearly_price = np.mean(prices)
 
         merged = pd.concat([yearly_div, yearly_price], axis=1)
         merged.columns = ["dividend", "price"]
