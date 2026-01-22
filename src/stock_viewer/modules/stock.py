@@ -11,20 +11,28 @@ import time
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QApplication
 
-def price_hist(stock,period="6mo"):
-    try:
-        hist = stock.history(period=period, interval="1d")
+def price_hist(stock, period="6mo"):
+    for p in [period, "5d"]:
+        try:
+            hist = stock.history(period=p, interval="1d")
 
-        # usa preço de fechamento ajustado se existir
-        if "Adj Close" in hist:
-            prices = hist["Adj Close"].dropna().tolist()
-        else:
-            prices = hist["Close"].dropna().tolist()
+            if hist is None or hist.empty:
+                continue
 
-    except Exception as e:
-        # fallback seguro
-        prices = []
-    return prices
+            # usa preço de fechamento ajustado se existir
+            if "Adj Close" in hist.columns:
+                prices = hist["Adj Close"].dropna().tolist()
+            else:
+                prices = hist["Close"].dropna().tolist()
+
+            if prices:
+                return prices
+
+        except Exception:
+            continue
+
+    return []
+
 
 def get_current_price(stock):
 
@@ -209,6 +217,48 @@ def get_peg_ratio(stock, years=3):
     except Exception:
         return math.nan
 
+def get_long_name(stock):
+    # 1️⃣ info (se existir)
+    try:
+        info = stock.info
+        if isinstance(info, dict):
+            name = info.get("longName") or info.get("shortName")
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+    except Exception:
+        pass
+
+    # 2️⃣ fast_info (às vezes tem)
+    try:
+        fi = stock.fast_info
+        if isinstance(fi, dict):
+            name = fi.get("shortName")
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+    except Exception:
+        pass
+
+    # 3️⃣ metadata do history (bem frágil, mas ajuda)
+    try:
+        meta = getattr(stock, "_history_metadata", None)
+        if isinstance(meta, dict):
+            symbol = meta.get("symbol")
+            exchange = meta.get("exchangeName")
+            if symbol and exchange:
+                return f"{symbol} ({exchange})"
+    except Exception:
+        pass
+
+    # 4️⃣ fallback final: nome “humano” a partir do ticker
+    ticker = getattr(stock, "ticker", "N/A")
+
+    if ticker.endswith(".SA"):
+        base = ticker.replace(".SA", "")
+        return f"{base} (B3)"
+
+    return ticker
+
+
 def agregate_more_stock_info(stocks_data,progress=None, parent=None):
     if progress is not None:
         progress.setMaximum(len(stocks_data));
@@ -247,7 +297,7 @@ def agregate_more_stock_info(stocks_data,progress=None, parent=None):
             
             
             # longName
-            stocks_data[stock_name]['longName']=info.get('longName', 'N/A')
+            stocks_data[stock_name]['longName']=get_long_name(stock)
             
             # dividendYield
             stocks_data[stock_name]['dividendYield']=get_dividend_yield(stock)
