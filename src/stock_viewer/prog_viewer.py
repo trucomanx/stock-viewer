@@ -70,6 +70,8 @@ DEFAULT_TABLE_CONTENT={
 }
 
 DEFAULT_PROGRAM_CONTENT={ 
+    "button_groupplot": "G. plot",
+    "button_groupplot_tooltip": "Plot of amount by group",
     "button_prog_configure": "Settings",
     "button_prog_configure_tooltip": "Open the configure Json file of program",  
     "button_update": "To update",
@@ -127,6 +129,146 @@ configure.verify_default_config(DEFAULT_TABLE_CONFIG_PATH, default_content=DEFAU
 configure.verify_default_config(PROGRAM_CONFIG_PATH      , default_content=DEFAULT_PROGRAM_CONTENT)
 
 CONFIG=configure.load_config(PROGRAM_CONFIG_PATH)
+
+def show_bar_plot_hor(labels, values, title="", color = "blue"):
+    w = pg.plot()
+    w.setWindowTitle(title)
+
+    # FUNDO branco TOTAL
+    w.setBackground("w")
+    w.getViewBox().setBackgroundColor("w")
+
+    y = list(range(len(labels)))
+
+    x_max = max(values)
+    x_min = 0 # min(values)
+
+    # ==== GRID MANUAL (ATRÁS) ====
+    pct = 0.10
+    x_ext_max = np.ceil(x_max * (1.0 + pct))
+
+    
+    step = (x_ext_max-x_min)/5
+    def floor_one_sig_digit(n):
+        if n == 0:
+            return 0
+        power = np.floor(np.log10(abs(n)))
+        factor = 10 ** power
+        return np.floor(n / factor) * factor
+    step_round = floor_one_sig_digit(step)
+    x_min_round = floor_one_sig_digit(x_min)
+    x_max_round = floor_one_sig_digit(x_max)
+
+    for x in np.arange(x_min_round, x_max_round+2*step_round, step_round):
+        line = pg.InfiniteLine(
+            pos=x,
+            angle=90,
+            pen=pg.mkPen((200, 200, 200), width=1)
+        )
+        line.setZValue(-100)
+        w.addItem(line)
+
+    # ==== BARRAS HORIZONTAIS ====
+    bars = pg.BarGraphItem(
+        x0=[0] * len(values),
+        x1=values,
+        y=y,
+        height=0.7,
+        brush=color
+    )
+    bars.setZValue(10)
+    w.addItem(bars)
+
+    # ==== LABELS eixo Y ====
+    axis = w.getAxis("left")
+    axis.setTicks([list(zip(y, labels))])
+
+    # ==== TEXTO DOS VALORES (lado direito da barra) ====
+    offset = x_max * 0.01  # espaçamento visual
+    for yi, val in zip(y, values):
+        if val>1000:
+            val_text = f"{val/1000:.3f} k"
+        else:
+            val_text = f"{val:.2f}"
+        txt = pg.TextItem(
+            text=val_text,
+            anchor=(0, 0.5),   # alinhado à esquerda, centrado vertical
+            color=color
+        )
+        
+        font = QFont()
+        font.setBold(True)
+        #font.setPointSize(10)  # opcional
+
+        txt.setPos(val + offset, yi)
+        txt.setZValue(20)
+        w.addItem(txt)
+
+    # ==== LIMITES ====
+    w.setYRange(-0.6, len(labels) - 0.4)
+    w.setXRange(x_min, x_max * 1.12)  # extra espaço p/ texto
+
+    # ==== MARGENS ====
+    w.getPlotItem().layout.setContentsMargins(20, 20, 20, 20)
+
+    w.resize(900, 520)
+
+    w.show()
+    return w
+
+
+def show_bar_plot_ver(labels, values, title=""):
+    # Cria uma nova janela de plot
+    w = pg.plot()
+    w.setWindowTitle(title)
+
+    # FUNDO branco TOTAL (compatível)
+    w.setBackground("w")
+    w.getViewBox().setBackgroundColor("w")
+
+    x = list(range(len(labels)))
+
+    # ==== GRID MANUAL (ATRÁS) ====
+    pct = 0.10
+    y_max = np.ceil(max(values) * (1.0 + pct))
+    y_min = 0
+
+    steps = 5
+
+    for y in np.linspace(y_min, y_max, steps):
+        line = pg.InfiniteLine(
+            pos=y,
+            angle=0,
+            pen=pg.mkPen((200, 200, 200), width=1)
+        )
+        line.setZValue(-100)
+        w.addItem(line)
+
+    # ==== BARRAS ====
+    bars = pg.BarGraphItem(
+        x=x,
+        height=values,
+        width=0.7,
+        brush="blue"
+    )
+    bars.setZValue(10)
+    w.addItem(bars)
+
+    # ==== LABELS eixo X ====
+    axis = w.getAxis("bottom")
+    axis.setTicks([list(zip(x, labels))])
+
+    # ==== LIMITES ====
+    w.setXRange(-0.6, len(labels) - 0.4)
+    w.setYRange(y_min, y_max)
+
+    # ==== MARGENS ====
+    w.getPlotItem().layout.setContentsMargins(20, 20, 20, 20)
+
+    w.resize(1024, 480)
+
+    w.show()
+    return w   # retorna a janela viva
 
 def plot_1d_simple_widget(prices,color="red", width=1):
     w = pg.PlotWidget()
@@ -358,6 +500,8 @@ class StocksViewer(QMainWindow):
         self.stocks_data = {}
         self.groups_data = {}
         self.config_data = {}
+        
+        self.plot_windows = []  # manter referência às janelas abertas
 
         ## Icon
         # Get base directory for icons
@@ -441,6 +585,14 @@ class StocksViewer(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         buttons_layout.addWidget(spacer)
 
+        # Group plot
+        self.groupplot_button = QPushButton(CONFIG["button_groupplot"], self)
+        self.groupplot_button.setToolTip(CONFIG["button_groupplot_tooltip"])
+        self.groupplot_button.setIcon(QIcon.fromTheme("applications-graphics"))
+        self.groupplot_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
+        self.groupplot_button.clicked.connect(self.on_groupplot_click)
+        self.groupplot_button.setEnabled(False)
+        buttons_layout.addWidget(self.groupplot_button)
 
         # Configure
         self.configure_button = QPushButton(CONFIG["button_prog_configure"], self)
@@ -562,6 +714,37 @@ class StocksViewer(QMainWindow):
 
         self.config_tab.setLayout(layout)
 
+    def on_groupplot_click(self):
+        '''
+            self.groups_data = {
+                '*': ['ALUP4.SA', 'BBAS3.SA', 'CPLE3.SA', 'DISB34.SA', 'NFLX34.SA'], 
+                'Energia': ['ALUP4.SA', 'CPLE3.SA'], 
+                'Financiero': ['BBAS3.SA'], 
+                'Entretenimento': ['DISB34.SA', 'NFLX34.SA']
+            }
+        '''
+        dict_data = {}
+        for group in self.groups_data:
+            if group !="*":
+                val = 0
+                for ticker in self.groups_data[group]:
+                    quantity = self.stocks_data[ticker].get('quantity', 0.0) 
+                    currentPrice = self.stocks_data[ticker].get('currentPrice', 0.0) 
+                    val += quantity * currentPrice
+                dict_data[group] = val
+        
+        labels = list(dict_data.keys())
+        values = list(dict_data.values()) 
+        
+        pairs = sorted(zip(labels, values), key=lambda x: x[1], reverse=False)
+        labels_sorted, values_sorted = zip(*pairs)
+        labels_sorted = list(labels_sorted)
+        values_sorted = list(values_sorted)
+        
+        win = show_bar_plot_hor(labels_sorted, values_sorted, title="")
+        self.plot_windows.append(win)  # evita GC fechar a janela
+        #print(dict_data)
+
     def about_data(self):
         data={
             "version": about.__version__,
@@ -637,6 +820,7 @@ class StocksViewer(QMainWindow):
 
         finally:
             self.setEnabled(True)
+            self.groupplot_button.setEnabled(True)
 
 
     def update_table_columns(self):
