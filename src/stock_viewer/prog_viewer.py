@@ -217,58 +217,6 @@ def show_bar_plot_hor(labels, values, title="", color = "blue"):
     return w
 
 
-def show_bar_plot_ver(labels, values, title=""):
-    # Cria uma nova janela de plot
-    w = pg.plot()
-    w.setWindowTitle(title)
-
-    # FUNDO branco TOTAL (compatível)
-    w.setBackground("w")
-    w.getViewBox().setBackgroundColor("w")
-
-    x = list(range(len(labels)))
-
-    # ==== GRID MANUAL (ATRÁS) ====
-    pct = 0.10
-    y_max = np.ceil(max(values) * (1.0 + pct))
-    y_min = 0
-
-    steps = 5
-
-    for y in np.linspace(y_min, y_max, steps):
-        line = pg.InfiniteLine(
-            pos=y,
-            angle=0,
-            pen=pg.mkPen((200, 200, 200), width=1)
-        )
-        line.setZValue(-100)
-        w.addItem(line)
-
-    # ==== BARRAS ====
-    bars = pg.BarGraphItem(
-        x=x,
-        height=values,
-        width=0.7,
-        brush="blue"
-    )
-    bars.setZValue(10)
-    w.addItem(bars)
-
-    # ==== LABELS eixo X ====
-    axis = w.getAxis("bottom")
-    axis.setTicks([list(zip(x, labels))])
-
-    # ==== LIMITES ====
-    w.setXRange(-0.6, len(labels) - 0.4)
-    w.setYRange(y_min, y_max)
-
-    # ==== MARGENS ====
-    w.getPlotItem().layout.setContentsMargins(20, 20, 20, 20)
-
-    w.resize(1024, 480)
-
-    w.show()
-    return w   # retorna a janela viva
 
 def plot_1d_simple_widget(prices,color="red", width=1):
     w = pg.PlotWidget()
