@@ -18,7 +18,7 @@ yf.set_tz_cache_location(os.path.join(temp_dir, "yf_cache"))
 
 # ---------------- PRICE HISTORY ---------------- #
 
-def price_hist(stock, period="6mo"):
+def price_hist(stock, period="6mo", interval="1d"):
     for p in [period, "5d"]:
         try:
             hist = stock.history(period=p, interval="1d")
@@ -50,9 +50,10 @@ def get_current_price(stock):
         pass
 
     try:
-        hist = stock.history(period="1d", interval="1m")
-        if not hist.empty:
-            return float(hist["Close"].iloc[-1])
+        hist = price_hist(stock, period="1d", interval="1m")
+        
+        if len(hist)>0:
+            return float(hist[-1])
     except Exception:
         pass
 
