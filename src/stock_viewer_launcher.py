@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-# pip install pyinstaller
-
 # python3 -m venv venv-stock-viewer
 # source venv-stock-viewer/bin/activate
 # pip install --upgrade pip
