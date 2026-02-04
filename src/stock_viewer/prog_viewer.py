@@ -908,6 +908,13 @@ class StocksViewer(QMainWindow):
         self.comboBox.addItems(sorted(self.groups_data.keys()))
         self.display_table(self.comboBox.currentText())
 
+    def update_total_label(self, total_group_amount, total_group_gain):
+        msg = CONFIG["total_amount"]
+        msg += f'{total_group_amount / 1000.0:.3f} K'
+        msg += ' / '
+        msg += f'{total_group_gain / 1000.0:.3f} K'
+        self.total_label.setText(msg)
+        
     def display_table(self, group_name):
         if not group_name or group_name not in self.groups_data:
             return
@@ -1081,11 +1088,8 @@ class StocksViewer(QMainWindow):
                 total_group_amount += stock_data.get('total_amount', 0)
                 total_group_gain   += stock_data.get('capital_gain', 0)
 
-            msg = CONFIG["total_amount"]
-            msg+= f'{total_group_amount/1000.0:.3f} K'
-            msg+= ' / '
-            msg+= f'{total_group_gain/1000.0:.3f} K'
-            self.total_label.setText(msg)
+            self.update_total_label(total_group_amount, total_group_gain)
+            
             self.update_colors_in_table_items()
 
         finally:
@@ -1238,6 +1242,20 @@ class StocksViewer(QMainWindow):
         global_pos = self.tableWidget.viewport().mapToGlobal(pos)
         menu.exec_(global_pos)
 
+    def recompute_current_group_total(self):
+        group_name = self.comboBox.currentText()
+        if not group_name or group_name not in self.groups_data:
+            return
+
+        total_group_amount = 0.0
+        total_group_gain   = 0.0
+
+        for stock in self.groups_data[group_name]:
+            stock_data = self.stocks_data.get(stock, {})
+            total_group_amount += stock_data.get('total_amount', 0.0)
+            total_group_gain   += stock_data.get('capital_gain', 0.0)
+
+        self.update_total_label(total_group_amount, total_group_gain)
 
     def callback_item_changed(self, item):
         # Proteção global
@@ -1318,7 +1336,9 @@ class StocksViewer(QMainWindow):
                     ratio = (total_amount - initial_amount) * 100.0 / initial_amount
                 item_ratio.setText(f"{ratio:.2f}")
                 self.update_color_generic("capital_gain_ratio", row)
-
+            
+            self.recompute_current_group_total()
+        
         finally:
             # 🔐 GARANTIA ABSOLUTA de restauração
             self.tableWidget.setSortingEnabled(True)
