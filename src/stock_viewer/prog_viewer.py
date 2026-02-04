@@ -22,6 +22,7 @@ from stock_viewer.modules.stock       import agregate_more_stock_info
 from stock_viewer.modules.text_editor import open_with_default_text_editor
 from stock_viewer.modules.categorize  import categorize_stocks
 from stock_viewer.modules.wabout      import show_about_window
+from stock_viewer.modules.resources   import resource_path
 
 from stock_viewer.desktop import create_desktop_file, create_desktop_directory, create_desktop_menu
 
@@ -455,8 +456,7 @@ class StocksViewer(QMainWindow):
 
         ## Icon
         # Get base directory for icons
-        base_dir_path = os.path.dirname(os.path.abspath(__file__))
-        self.icon_path = os.path.join(base_dir_path, 'icons', 'logo.png')
+        self.icon_path = resource_path("icons", "logo.png")
         self.setWindowIcon(QIcon(self.icon_path)) 
 
         self.initUI()
