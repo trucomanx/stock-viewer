@@ -70,6 +70,8 @@ DEFAULT_TABLE_CONTENT={
 }
 
 DEFAULT_PROGRAM_CONTENT={ 
+    "button_performance": "P. plot",
+    "button_performance_tooltip": "Plot of performance",
     "button_groupplot": "G. plot",
     "button_groupplot_tooltip": "Plot of amount by group",
     "button_prog_configure": "Settings",
@@ -534,6 +536,15 @@ class StocksViewer(QMainWindow):
         buttons_layout.addWidget(spacer)
 
         # Group plot
+        self.performance_button = QPushButton(CONFIG["button_performance"], self)
+        self.performance_button.setToolTip(CONFIG["button_performance_tooltip"])
+        self.performance_button.setIcon(QIcon.fromTheme("applications-graphics"))
+        self.performance_button.setIconSize(QSize(CONFIG["toolbutton_icon_size"], CONFIG["toolbutton_icon_size"]))
+        self.performance_button.clicked.connect(self.on_performance_click)
+        self.performance_button.setEnabled(False)
+        buttons_layout.addWidget(self.performance_button)
+
+        # Group plot
         self.groupplot_button = QPushButton(CONFIG["button_groupplot"], self)
         self.groupplot_button.setToolTip(CONFIG["button_groupplot_tooltip"])
         self.groupplot_button.setIcon(QIcon.fromTheme("applications-graphics"))
@@ -662,6 +673,74 @@ class StocksViewer(QMainWindow):
 
         self.config_tab.setLayout(layout)
 
+    def on_performance_click(self):
+    
+        performances = []
+        total_cost_basis = 0.0
+        max_len = 0
+
+        # primeira passagem: descobrir maior histórico válido
+        for stock_data in self.stocks_data.values():
+            prices = stock_data.get('daysData2y', [])
+            if len(prices) >= 3:
+                max_len = max(max_len, len(prices))
+        if max_len == 0:
+            max_len = 1
+        
+        for stock_name, stock_data in self.stocks_data.items():
+            prices = stock_data.get('daysData2y', [])
+            quantity = stock_data.get('quantity')
+            average_price = stock_data.get('average_price')
+            currentPrice = stock_data.get('currentPrice')
+            
+
+            if len(prices)==0 or quantity is None or average_price is None or currentPrice is None:
+                continue
+            
+            if len(prices)<3:
+                prices = [currentPrice]*max_len
+            
+            prices = np.asarray(prices, dtype=float) * quantity
+            performances.append(prices)
+            
+            total_cost_basis += average_price*quantity
+
+        if not performances:
+            return 
+
+        # alinhar pelo FINAL → usar o menor tamanho
+        min_len = min(len(p) for p in performances)
+        
+        aligned = [p[-min_len:] for p in performances]
+
+        total_performance = np.sum(aligned, axis=0)
+
+        # limpa gráfico anterior
+        while self.plot_layout.count():
+            item = self.plot_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        
+        plot = plot_1d_complex(
+            total_performance.tolist(),
+            total_cost_basis,
+            color=CONFIG["plot_color"],
+            width=CONFIG["plot_linewidth"],
+            bgcolor=CONFIG["plot_bgcolor"],
+            pccolor=CONFIG["plot_pccolor"],
+            xlabel=CONFIG["plot_xlabel"],
+            ylabel=CONFIG["plot_ylabel"],
+            ylabel2=CONFIG["plot_ylabel2"],
+            enable_crosshair=True,   # 👈 parâmetro novo
+        )       
+        
+        plot.setTitle("Total performance")
+
+        self.plot_layout.addWidget(plot)
+
+        return 
+
     def on_groupplot_click(self):
         '''
             self.groups_data = {
@@ -769,6 +848,7 @@ class StocksViewer(QMainWindow):
         finally:
             self.setEnabled(True)
             self.groupplot_button.setEnabled(True)
+            self.performance_button.setEnabled(True)
 
 
     def update_table_columns(self):
